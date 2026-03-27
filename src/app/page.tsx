@@ -126,12 +126,17 @@ export default function Home() {
   const t = translations[language]
   const isRTL = language === 'ar'
   
+  const [projects, setProjects] = useState<Project[]>([])
   const [items, setItems] = useState<ProductionItem[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('items')
+  const [activeTab, setActiveTab] = useState('projects')
   
   // حالات النوافذ
+  const [addProjectOpen, setAddProjectOpen] = useState(false)
+  const [editProjectOpen, setEditProjectOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  
   const [addItemOpen, setAddItemOpen] = useState(false)
   const [editItemOpen, setEditItemOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<ProductionItem | null>(null)
@@ -146,8 +151,17 @@ export default function Home() {
   const [selectedStageId, setSelectedStageId] = useState<string>('')
   const [viewAttachmentsOpen, setViewAttachmentsOpen] = useState(false)
   const [viewingStage, setViewingStage] = useState<Stage | null>(null)
+  
+  // نافذة Checklist
+  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false)
+  const [viewingStageChecklist, setViewingStageChecklist] = useState<Stage | null>(null)
 
   // حالات العناصر الجديدة
+  const [newProject, setNewProject] = useState({
+    name: '', nameAr: '', clientName: '', description: '', notes: '',
+    startDate: '', deadline: ''
+  })
+  
   const [newItem, setNewItem] = useState({
     name: '', image: '', priority: 1, notes: '', totalQuantity: 1, deadline: ''
   })
@@ -170,11 +184,13 @@ export default function Home() {
   // جلب البيانات
   const fetchData = useCallback(async () => {
     try {
-      const [itemsRes, deptsRes] = await Promise.all([
+      const [projectsRes, itemsRes, deptsRes] = await Promise.all([
+        fetch('/api/projects'),
         fetch('/api/items'),
         fetch('/api/departments')
       ])
       
+      const projectsData = await projectsRes.json()
       const itemsData = await itemsRes.json()
       const deptsData = await deptsRes.json()
       
@@ -182,14 +198,20 @@ export default function Home() {
       const attachmentsRes = await fetch('/api/attachments')
       const attachmentsData = await attachmentsRes.json()
       
+      // جلب checklist لكل مرحلة
+      const checklistRes = await fetch('/api/checklist')
+      const checklistData = await checklistRes.json()
+      
       const itemsWithAttachments = itemsData.map((item: ProductionItem) => ({
         ...item,
         stages: item.stages.map((stage: Stage) => ({
           ...stage,
-          attachments: attachmentsData.filter((a: Attachment) => a.stageId === stage.id)
+          attachments: attachmentsData.filter((a: Attachment) => a.stageId === stage.id),
+          checklist: checklistData.filter((c: ChecklistItem) => c.stageId === stage.id).sort((a: ChecklistItem, b: ChecklistItem) => a.order - b.order)
         }))
       }))
       
+      setProjects(Array.isArray(projectsData) ? projectsData : [])
       setItems(itemsWithAttachments)
       setDepartments(deptsData)
     } catch (error) {
@@ -304,6 +326,66 @@ export default function Home() {
             attachments: viewingStage.attachments?.filter(a => a.id !== id) || []
           })
         }
+      }
+    } catch (error) {
+      toast.error(t.msg_error)
+    }
+  }
+
+  // ===== إدارة المشاريع =====
+  const handleAddProject = async () => {
+    if (!newProject.name.trim()) {
+      toast.error(language === 'ar' ? 'الرجاء إدخال اسم المشروع' : 'Please enter project name')
+      return
+    }
+
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProject)
+      })
+      
+      if (res.ok) {
+        toast.success(language === 'ar' ? 'تم إضافة المشروع' : 'Project added')
+        setAddProjectOpen(false)
+        setNewProject({ name: '', nameAr: '', clientName: '', description: '', notes: '', startDate: '', deadline: '' })
+        fetchData()
+      }
+    } catch (error) {
+      toast.error(t.msg_error)
+    }
+  }
+
+  const handleEditProject = async () => {
+    if (!editingProject) return
+    
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingProject)
+      })
+      
+      if (res.ok) {
+        toast.success(t.msg_item_updated)
+        setEditProjectOpen(false)
+        setEditingProject(null)
+        fetchData()
+      }
+    } catch (error) {
+      toast.error(t.msg_error)
+    }
+  }
+
+  const handleDeleteProject = async (id: string) => {
+    if (!confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذا المشروع؟ سيتم حذف جميع العناصر المرتبطة به.' : 'Delete this project and all its items?')) return
+    
+    try {
+      const res = await fetch(`/api/projects?id=${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success(language === 'ar' ? 'تم حذف المشروع' : 'Project deleted')
+        fetchData()
       }
     } catch (error) {
       toast.error(t.msg_error)
