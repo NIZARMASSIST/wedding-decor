@@ -50,6 +50,9 @@ COPY --from=builder /app/package.json ./package.json
 COPY start.sh ./start.sh
 RUN chmod +x ./start.sh
 
+# Force rebuild timestamp
+RUN echo "Build: $(date)" > /app/build_info.txt
+
 EXPOSE 8080
 
 ENV PORT=8080
