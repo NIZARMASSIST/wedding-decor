@@ -6,8 +6,25 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// المشاريع
+model Project {
+  id          String   @id @default(cuid())
+  name        String   // اسم المشروع بالإنجليزية
+  nameAr      String?  // اسم المشروع بالعربية
+  clientName  String?  // اسم العميل
+  description String?  // وصف المشروع
+  status      String   @default("active") // active, completed, cancelled
+  startDate   DateTime? // تاريخ البداية
+  endDate     DateTime? // تاريخ الانتهاء
+  deadline    DateTime? // الموعد النهائي
+  notes       String?  // ملاحظات
+  items       ProductionItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // الأقسام المتاحة في التصنيع
@@ -25,6 +42,8 @@ model Department {
 // العناصر المراد تصنيعها
 model ProductionItem {
   id              String   @id @default(cuid())
+  projectId       String?  // ربط العنصر بمشروع
+  project         Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   name            String   // اسم العنصر
   image           String?  // صورة العنصر (base64 أو رابط)
   priority        Int      @default(1) // الأولوية (1 = أعلى أولوية)
@@ -35,6 +54,8 @@ model ProductionItem {
   stages          Stage[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  
+  @@index([projectId])
 }
 
 // المراحل لكل عنصر
@@ -59,10 +80,13 @@ model Stage {
   readyForNextAt  DateTime? // متى يكون جاهز للمرحلة التالية
   notes           String?  // ملاحظات على المرحلة
   attachments     Attachment[] // المرفقات (صور و PDF)
+  checklist       ChecklistItem[] // قائمة الكميات
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
   @@unique([itemId, stageNumber])
+  @@index([itemId])
+  @@index([departmentId])
 }
 
 // المرفقات لكل مرحلة (صور و PDF)
@@ -77,6 +101,24 @@ model Attachment {
   description String?  // وصف الملف
   uploadType  String   @default("work") // work: أثناء العمل, completion: عند الانتهاء
   uploadedAt  DateTime @default(now())
+  
+  @@index([stageId])
+}
+
+// قائمة الكميات لكل مرحلة (Checklist)
+model ChecklistItem {
+  id          String    @id @default(cuid())
+  stageId     String
+  stage       Stage     @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  itemName    String    // اسم القطعة/الكمية
+  quantity    Int       @default(1) // الكمية
+  completed   Boolean   @default(false) // هل تم الإنجاز
+  completedAt DateTime? // تاريخ الإنجاز
+  completedBy String?   // من قام بالإنجاز
+  notes       String?   // ملاحظات
+  order       Int       @default(0) // الترتيب
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   
   @@index([stageId])
 }

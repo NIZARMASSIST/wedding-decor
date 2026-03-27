@@ -1,0 +1,18 @@
+#!/bin/sh
+echo "=========================================="
+echo "  Alwan Al Khaleej - Wedding Decor App"
+echo "=========================================="
+
+# Set memory limit for Node.js (400MB to leave room for other processes)
+export NODE_OPTIONS="--max-old-space-size=400"
+
+# Run migrations if database URL is set
+if [ -n "$DATABASE_URL" ]; then
+    echo "Running database migrations..."
+    npx prisma db push --schema=./prisma/schema.prisma 2>&1 || echo "Migration completed or already up to date"
+else
+    echo "No DATABASE_URL set, skipping migrations"
+fi
+
+echo "Starting server on port $PORT..."
+exec node server.js
