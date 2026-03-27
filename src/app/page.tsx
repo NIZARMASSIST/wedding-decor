@@ -16,10 +16,15 @@ import { Progress } from '@/components/ui/progress'
 import { 
   Plus, Trash2, Calendar, Clock, Package, Users, 
   Settings, Printer, ChevronUp, ChevronDown, Edit,
-  Globe, Paperclip, Download, Eye, Play, CheckCircle2
+  Globe, Paperclip, Download, Eye, Play, CheckCircle2,
+  FolderOpen, BarChart3, PieChart
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { translations, Language } from '@/lib/i18n'
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart as RechartsPie, Pie, Cell, LineChart, Line, Area, AreaChart
+} from 'recharts'
 
 // أنواع البيانات
 interface Attachment {
@@ -701,11 +706,133 @@ export default function Home() {
       <main className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-white/80 backdrop-blur-sm p-1 rounded-lg shadow-sm print:hidden flex flex-wrap">
+            <TabsTrigger value="projects" className="gap-2"><FolderOpen className="w-4 h-4" /> {language === 'ar' ? 'المشاريع' : 'Projects'}</TabsTrigger>
             <TabsTrigger value="items" className="gap-2"><Package className="w-4 h-4" /> {t.nav_items}</TabsTrigger>
             <TabsTrigger value="stages" className="gap-2"><Settings className="w-4 h-4" /> {t.nav_stages}</TabsTrigger>
             <TabsTrigger value="schedule" className="gap-2"><Calendar className="w-4 h-4" /> {t.nav_schedule}</TabsTrigger>
+            <TabsTrigger value="charts" className="gap-2"><BarChart3 className="w-4 h-4" /> {language === 'ar' ? 'الرسوم البيانية' : 'Charts'}</TabsTrigger>
             <TabsTrigger value="departments" className="gap-2"><Users className="w-4 h-4" /> {t.nav_departments}</TabsTrigger>
           </TabsList>
+
+          {/* تبويب المشاريع */}
+          <TabsContent value="projects" className="space-y-4">
+            <div className="flex justify-between items-center print:hidden">
+              <h2 className="text-xl font-bold text-amber-900">{language === 'ar' ? 'المشاريع' : 'Projects'} ({projects.length})</h2>
+              <Dialog open={addProjectOpen} onOpenChange={setAddProjectOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">
+                    <Plus className="w-4 h-4" /> {language === 'ar' ? 'إضافة مشروع' : 'Add Project'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader><DialogTitle>{language === 'ar' ? 'إضافة مشروع جديد' : 'Add New Project'}</DialogTitle></DialogHeader>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>{language === 'ar' ? 'اسم المشروع (إنجليزي)' : 'Name (English)'}</Label>
+                        <Input value={newProject.name} onChange={(e) => setNewProject(prev => ({ ...prev, name: e.target.value }))} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>{language === 'ar' ? 'الاسم (عربي)' : 'Name (Arabic)'}</Label>
+                        <Input value={newProject.nameAr} onChange={(e) => setNewProject(prev => ({ ...prev, nameAr: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{language === 'ar' ? 'اسم العميل' : 'Client Name'}</Label>
+                      <Input value={newProject.clientName} onChange={(e) => setNewProject(prev => ({ ...prev, clientName: e.target.value }))} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>{language === 'ar' ? 'تاريخ البداية' : 'Start Date'}</Label>
+                        <Input type="date" value={newProject.startDate} onChange={(e) => setNewProject(prev => ({ ...prev, startDate: e.target.value }))} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>{language === 'ar' ? 'الموعد النهائي' : 'Deadline'}</Label>
+                        <Input type="date" value={newProject.deadline} onChange={(e) => setNewProject(prev => ({ ...prev, deadline: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{language === 'ar' ? 'الوصف' : 'Description'}</Label>
+                      <Textarea value={newProject.description} onChange={(e) => setNewProject(prev => ({ ...prev, description: e.target.value }))} rows={2} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{language === 'ar' ? 'ملاحظات' : 'Notes'}</Label>
+                      <Textarea value={newProject.notes} onChange={(e) => setNewProject(prev => ({ ...prev, notes: e.target.value }))} rows={2} />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setAddProjectOpen(false)}>{t.btn_cancel}</Button>
+                    <Button onClick={handleAddProject}>{t.btn_save}</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* قائمة المشاريع */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {projects.map(project => {
+                const projectItems = items.filter(i => i.projectId === project.id)
+                const projectProgress = projectItems.length > 0 
+                  ? Math.round(projectItems.reduce((sum, item) => {
+                      const completedStages = item.stages.filter(s => s.status === 'completed').length
+                      return sum + (item.stages.length > 0 ? (completedStages / item.stages.length) * 100 : 0)
+                    }, 0) / projectItems.length)
+                  : 0
+                
+                return (
+                  <Card key={project.id} className="overflow-hidden">
+                    <div className="h-2 bg-gradient-to-r from-amber-500 to-orange-500" />
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold">
+                            {project.nameAr?.charAt(0) || project.name.charAt(0)}
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">{project.nameAr || project.name}</CardTitle>
+                            <CardDescription className="flex items-center gap-2 flex-wrap">
+                              {project.clientName && <span>{project.clientName}</span>}
+                              <span className="text-xs">• {projectItems.length} {language === 'ar' ? 'عنصر' : 'items'}</span>
+                            </CardDescription>
+                          </div>
+                        </div>
+                        <Badge className={project.status === 'active' ? 'bg-green-500' : 'bg-gray-500'}>
+                          {project.status === 'active' ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'مكتمل' : 'Completed')}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3 pt-0">
+                      <Progress value={projectProgress} className="h-2" />
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">{language === 'ar' ? 'نسبة الإنجاز' : 'Progress'}</span>
+                        <span className="font-bold text-amber-600">{projectProgress}%</span>
+                      </div>
+                      {project.deadline && (
+                        <div className="flex items-center gap-1 text-sm text-gray-500">
+                          <Calendar className="w-4 h-4" />
+                          <span>{language === 'ar' ? 'الموعد النهائي' : 'Deadline'}: {formatDate(project.deadline)}</span>
+                        </div>
+                      )}
+                      <div className="flex gap-2 pt-2 border-t print:hidden">
+                        <Button variant="outline" size="sm" className="gap-1 flex-1" onClick={() => { setEditingProject(project); setEditProjectOpen(true) }}>
+                          <Edit className="w-4 h-4" /> {t.btn_edit}
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-1 text-red-600 hover:text-red-700" onClick={() => handleDeleteProject(project.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+              {projects.length === 0 && (
+                <div className="col-span-full text-center py-12">
+                  <FolderOpen className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500">{language === 'ar' ? 'لا توجد مشاريع' : 'No projects yet'}</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
 
           {/* تبويب العناصر */}
           <TabsContent value="items" className="space-y-4">
@@ -1334,6 +1461,232 @@ export default function Home() {
                   {items.length === 0 && (
                     <div className="text-center py-8 text-gray-500">
                       {language === 'ar' ? 'لا توجد عناصر لعرضها' : 'No items to display'}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* تبويب الرسوم البيانية */}
+          <TabsContent value="charts" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold text-amber-900">{language === 'ar' ? 'الرسوم البيانية والتقارير' : 'Charts & Reports'}</h2>
+              <div className="flex gap-2">
+                <Button onClick={() => handleExport(undefined, 'xlsx')} variant="outline" className="gap-2 bg-green-50 hover:bg-green-100 border-green-300 text-green-700">
+                  <Download className="w-4 h-4" /> Excel {language === 'ar' ? 'مع رسوم بيانية' : 'with Charts'}
+                </Button>
+                <Button onClick={() => handleExport(undefined, 'html')} variant="outline" className="gap-2 bg-red-50 hover:bg-red-100 border-red-300 text-red-700">
+                  <Download className="w-4 h-4" /> PDF
+                </Button>
+              </div>
+            </div>
+
+            {/* إحصائيات سريعة */}
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card className="bg-gradient-to-br from-amber-50 to-orange-100">
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-amber-600">{projects.length}</div>
+                    <div className="text-sm text-gray-600">{language === 'ar' ? 'المشاريع' : 'Projects'}</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-blue-50 to-cyan-100">
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-blue-600">{items.length}</div>
+                    <div className="text-sm text-gray-600">{language === 'ar' ? 'العناصر' : 'Items'}</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-green-50 to-emerald-100">
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-green-600">{stats.completedStages}</div>
+                    <div className="text-sm text-gray-600">{language === 'ar' ? 'مراحل مكتملة' : 'Completed Stages'}</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-purple-50 to-violet-100">
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-purple-600">{stats.progress}%</div>
+                    <div className="text-sm text-gray-600">{language === 'ar' ? 'نسبة الإنجاز' : 'Progress'}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* رسم بياني - تقدم المشاريع */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-amber-600" />
+                    {language === 'ar' ? 'تقدم المشاريع' : 'Projects Progress'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={projects.map(p => {
+                        const projectItems = items.filter(i => i.projectId === p.id)
+                        const totalStages = projectItems.reduce((sum, i) => sum + i.stages.length, 0)
+                        const completedStages = projectItems.reduce((sum, i) => 
+                          sum + i.stages.filter(s => s.status === 'completed').length, 0)
+                        return {
+                          name: (p.nameAr || p.name).substring(0, 10),
+                          completed: completedStages,
+                          total: totalStages,
+                          progress: totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0
+                        }
+                      })}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="completed" name={language === 'ar' ? 'مكتمل' : 'Completed'} fill="#22c55e" />
+                        <Bar dataKey="total" name={language === 'ar' ? 'الإجمالي' : 'Total'} fill="#f59e0b" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* رسم بياني - توزيع المراحل حسب الأقسام */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChart className="w-5 h-5 text-blue-600" />
+                    {language === 'ar' ? 'توزيع المراحل حسب الأقسام' : 'Stages by Department'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPie>
+                        <Pie
+                          data={departments.map(d => {
+                            const deptStages = items.flatMap(i => i.stages).filter(s => s.departmentId === d.id)
+                            return { name: d.nameAr || d.name, value: deptStages.length, color: d.color }
+                          }).filter(d => d.value > 0)}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          dataKey="value"
+                        >
+                          {departments.map((d, index) => (
+                            <Cell key={`cell-${index}`} fill={d.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </RechartsPie>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* رسم بياني - حالة العناصر */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>{language === 'ar' ? 'حالة العناصر' : 'Items Status'}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[
+                        { name: language === 'ar' ? 'مكتمل' : 'Completed', value: stats.completedStages, color: '#22c55e' },
+                        { name: language === 'ar' ? 'قيد التنفيذ' : 'In Progress', value: stats.inProgressStages, color: '#3b82f6' },
+                        { name: language === 'ar' ? 'قيد الانتظار' : 'Pending', value: stats.pendingStages, color: '#f59e0b' }
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="#f59e0b">
+                          <Cell fill="#22c55e" />
+                          <Cell fill="#3b82f6" />
+                          <Cell fill="#f59e0b" />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* رسم بياني - تقدم Checklist */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>{language === 'ar' ? 'تقدم الكميات (Checklist)' : 'Quantity Progress'}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={items.slice(0, 10).map(item => {
+                        const totalChecklist = item.stages.reduce((sum, s) => sum + (s.checklist?.length || 0), 0)
+                        const completedChecklist = item.stages.reduce((sum, s) => 
+                          sum + (s.checklist?.filter(c => c.completed).length || 0), 0)
+                        return {
+                          name: item.name.substring(0, 10),
+                          total: totalChecklist,
+                          completed: completedChecklist,
+                          progress: totalChecklist > 0 ? Math.round((completedChecklist / totalChecklist) * 100) : 0
+                        }
+                      })}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Area type="monotone" dataKey="completed" name={language === 'ar' ? 'مكتمل' : 'Completed'} stroke="#22c55e" fill="#22c55e" fillOpacity={0.3} />
+                        <Area type="monotone" dataKey="total" name={language === 'ar' ? 'الإجمالي' : 'Total'} stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.3} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* قائمة المشاريع مع زر تصدير */}
+            <Card>
+              <CardHeader>
+                <CardTitle>{language === 'ar' ? 'تصدير حسب المشروع' : 'Export by Project'}</CardTitle>
+                <CardDescription>{language === 'ar' ? 'اختر مشروعاً لتصدير تقريره مع الرسوم البيانية' : 'Select a project to export its report with charts'}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                  {projects.map(project => {
+                    const projectItems = items.filter(i => i.projectId === project.id)
+                    const progress = projectItems.length > 0 
+                      ? Math.round(projectItems.reduce((sum, item) => {
+                          const completed = item.stages.filter(s => s.status === 'completed').length
+                          return sum + (item.stages.length > 0 ? (completed / item.stages.length) * 100 : 0)
+                        }, 0) / projectItems.length)
+                      : 0
+                    return (
+                      <div key={project.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                        <div>
+                          <p className="font-medium">{project.nameAr || project.name}</p>
+                          <p className="text-sm text-gray-500">{projectItems.length} {language === 'ar' ? 'عنصر' : 'items'} • {progress}%</p>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" onClick={() => handleExport(project.id, 'xlsx')} className="gap-1 bg-green-50 hover:bg-green-100 border-green-300 text-green-700">
+                            <Download className="w-3 h-3" /> Excel
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleExport(project.id, 'html')} className="gap-1 bg-red-50 hover:bg-red-100 border-red-300 text-red-700">
+                            <Download className="w-3 h-3" /> PDF
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {projects.length === 0 && (
+                    <div className="col-span-full text-center py-8 text-gray-500">
+                      {language === 'ar' ? 'لا توجد مشاريع' : 'No projects'}
                     </div>
                   )}
                 </div>
