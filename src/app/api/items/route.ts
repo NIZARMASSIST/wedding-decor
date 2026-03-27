@@ -6,15 +6,26 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status')
+    const projectId = searchParams.get('projectId')
     
     const where: any = {}
     if (status) {
       where.status = status
     }
+    if (projectId) {
+      where.projectId = projectId
+    }
     
     const items = await db.productionItem.findMany({
       where,
       include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+            nameAr: true
+          }
+        },
         stages: {
           include: {
             department: true,
@@ -41,7 +52,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, image, priority, notes, totalQuantity, deadline, stages } = body
+    const { name, image, priority, notes, totalQuantity, deadline, stages, projectId } = body
     
     // إنشاء بيانات المراحل مع القيم المقدمة من المستخدم
     const stagesData = stages ? stages.map((stage: any, index: number) => {
@@ -75,6 +86,7 @@ export async function POST(request: NextRequest) {
         notes,
         totalQuantity: totalQuantity || 1,
         deadline: deadline ? new Date(deadline) : null,
+        projectId: projectId || null,
         stages: stages ? {
           create: stagesData
         } : undefined
@@ -99,7 +111,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, name, image, priority, notes, totalQuantity, deadline, status } = body
+    const { id, name, image, priority, notes, totalQuantity, deadline, status, projectId } = body
     
     const item = await db.productionItem.update({
       where: { id },
@@ -110,7 +122,8 @@ export async function PUT(request: NextRequest) {
         notes,
         totalQuantity,
         deadline: deadline ? new Date(deadline) : null,
-        status
+        status,
+        projectId: projectId !== undefined ? projectId : undefined
       },
       include: {
         stages: {

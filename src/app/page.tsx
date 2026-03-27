@@ -70,6 +70,12 @@ interface Stage {
 
 interface ProductionItem {
   id: string
+  projectId?: string
+  project?: {
+    id: string
+    name: string
+    nameAr?: string
+  }
   name: string
   image?: string
   priority: number
@@ -80,6 +86,35 @@ interface ProductionItem {
   stages: Stage[]
   createdAt: string
   updatedAt: string
+}
+
+// واجهة المشروع
+interface Project {
+  id: string
+  name: string
+  nameAr?: string
+  clientName?: string
+  description?: string
+  status: string
+  startDate?: string
+  endDate?: string
+  deadline?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+// واجهة عنصر Checklist
+interface ChecklistItem {
+  id: string
+  stageId: string
+  itemName: string
+  quantity: number
+  completed: boolean
+  completedAt?: string
+  completedBy?: string
+  notes?: string
+  order: number
 }
 
 // حالات العنصر
@@ -163,7 +198,7 @@ export default function Home() {
   })
   
   const [newItem, setNewItem] = useState({
-    name: '', image: '', priority: 1, notes: '', totalQuantity: 1, deadline: ''
+    name: '', image: '', priority: 1, notes: '', totalQuantity: 1, deadline: '', projectId: ''
   })
   const [newStages, setNewStages] = useState<any[]>([])
   
@@ -351,8 +386,13 @@ export default function Home() {
         setAddProjectOpen(false)
         setNewProject({ name: '', nameAr: '', clientName: '', description: '', notes: '', startDate: '', deadline: '' })
         fetchData()
+      } else {
+        const errorData = await res.json()
+        console.error('Error response:', errorData)
+        toast.error(language === 'ar' ? 'فشل في إضافة المشروع' : 'Failed to add project')
       }
     } catch (error) {
+      console.error('Error adding project:', error)
       toast.error(t.msg_error)
     }
   }
@@ -409,7 +449,7 @@ export default function Home() {
       if (res.ok) {
         toast.success(t.msg_item_added)
         setAddItemOpen(false)
-        setNewItem({ name: '', image: '', priority: 1, notes: '', totalQuantity: 1, deadline: '' })
+        setNewItem({ name: '', image: '', priority: 1, notes: '', totalQuantity: 1, deadline: '', projectId: '' })
         setNewStages([])
         fetchData()
       }
@@ -429,7 +469,8 @@ export default function Home() {
         body: JSON.stringify({
           id: editingItem.id, name: editingItem.name, image: editingItem.image,
           priority: editingItem.priority, notes: editingItem.notes,
-          totalQuantity: editingItem.totalQuantity, deadline: editingItem.deadline
+          totalQuantity: editingItem.totalQuantity, deadline: editingItem.deadline,
+          projectId: editingItem.projectId
         })
       })
       
@@ -929,6 +970,23 @@ export default function Home() {
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader><DialogTitle>{t.btn_add_item}</DialogTitle></DialogHeader>
                   <div className="space-y-4">
+                    {/* اختيار المشروع */}
+                    <div className="space-y-2">
+                      <Label>{language === 'ar' ? 'المشروع' : 'Project'}</Label>
+                      <Select value={newItem.projectId} onValueChange={(val) => setNewItem(prev => ({ ...prev, projectId: val }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={language === 'ar' ? 'اختر المشروع (اختياري)' : 'Select Project (optional)'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">{language === 'ar' ? 'بدون مشروع' : 'No Project'}</SelectItem>
+                          {projects.map(project => (
+                            <SelectItem key={project.id} value={project.id}>
+                              {project.nameAr || project.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>{t.item_name} {t.required}</Label>
@@ -1850,6 +1908,23 @@ export default function Home() {
           <DialogHeader><DialogTitle>{language === 'ar' ? 'تعديل العنصر' : 'Edit Item'}</DialogTitle></DialogHeader>
           {editingItem && (
             <div className="space-y-4">
+              {/* اختيار المشروع */}
+              <div className="space-y-2">
+                <Label>{language === 'ar' ? 'المشروع' : 'Project'}</Label>
+                <Select value={editingItem.projectId || ''} onValueChange={(val) => setEditingItem({ ...editingItem, projectId: val || undefined })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={language === 'ar' ? 'اختر المشروع (اختياري)' : 'Select Project (optional)'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">{language === 'ar' ? 'بدون مشروع' : 'No Project'}</SelectItem>
+                    {projects.map(project => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.nameAr || project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label>{t.item_name}</Label>
                 <Input value={editingItem.name} onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })} />
