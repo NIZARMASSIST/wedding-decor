@@ -567,14 +567,11 @@ export default function Home() {
     }
   }
 
-  // تصدير Excel أو PDF (عام أو حسب المشروع)
-  const handleExport = async (projectId?: string, format: 'xlsx' | 'pdf' = 'xlsx') => {
+  // تصدير Excel (عام أو حسب المشروع)
+  const handleExport = async (projectId?: string) => {
     try {
       let url = '/api/export'
-      const params = new URLSearchParams()
-      if (projectId) params.append('projectId', projectId)
-      if (format === 'pdf') params.append('format', 'pdf')
-      if (params.toString()) url += `?${params.toString()}`
+      if (projectId) url += `?projectId=${projectId}`
       
       const res = await fetch(url)
       if (res.ok) {
@@ -585,9 +582,7 @@ export default function Home() {
         
         // استخراج اسم الملف من header
         const contentDisposition = res.headers.get('Content-Disposition')
-        const defaultFilename = format === 'pdf' 
-          ? `alwan-al-khaleej-report-${new Date().toISOString().split('T')[0]}.pdf`
-          : `alwan-al-khaleej-report-${new Date().toISOString().split('T')[0]}.xlsx`
+        const defaultFilename = `alwan-al-khaleej-report-${new Date().toISOString().split('T')[0]}.xlsx`
         let filename = defaultFilename
         if (contentDisposition) {
           const filenameMatch = contentDisposition.match(/filename\*?=['"]?(?:UTF-\d['"]*)?([^;'"{}]+)/i)
@@ -601,8 +596,7 @@ export default function Home() {
         a.click()
         document.body.removeChild(a)
         window.URL.revokeObjectURL(downloadUrl)
-        const formatName = format === 'pdf' ? 'PDF' : 'Excel'
-        toast.success(language === 'ar' ? `تم تصدير البيانات كـ ${formatName} مع الرسوم البيانية` : `Data exported as ${formatName} with charts`)
+        toast.success(language === 'ar' ? 'تم تصدير البيانات مع الرسوم البيانية' : 'Data exported with charts')
       }
     } catch (error) {
       toast.error(t.msg_error)
@@ -683,11 +677,8 @@ export default function Home() {
                   <Globe className="w-4 h-4" /> EN
                 </Button>
               </div>
-              <Button onClick={() => handleExport(undefined, 'xlsx')} variant="outline" className="gap-2 bg-green-50 hover:bg-green-100 border-green-300 text-green-700">
-                <Download className="w-4 h-4" /> Excel
-              </Button>
-              <Button onClick={() => handleExport(undefined, 'pdf')} variant="outline" className="gap-2 bg-red-50 hover:bg-red-100 border-red-300 text-red-700">
-                <Download className="w-4 h-4" /> PDF
+              <Button onClick={() => handleExport()} variant="outline" className="gap-2 bg-green-50 hover:bg-green-100 border-green-300 text-green-700">
+                <Download className="w-4 h-4" /> {language === 'ar' ? 'تصدير Excel' : 'Export Excel'}
               </Button>
               <Button onClick={() => window.print()} variant="outline" className="gap-2">
                 <Printer className="w-4 h-4" /> {t.btn_print}
