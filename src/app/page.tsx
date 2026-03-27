@@ -567,21 +567,42 @@ export default function Home() {
     }
   }
 
-  // تصدير Excel
-  const handleExport = async () => {
+  // تصدير Excel أو PDF (عام أو حسب المشروع)
+  const handleExport = async (projectId?: string, format: 'xlsx' | 'pdf' = 'xlsx') => {
     try {
-      const res = await fetch('/api/export')
+      let url = '/api/export'
+      const params = new URLSearchParams()
+      if (projectId) params.append('projectId', projectId)
+      if (format === 'pdf') params.append('format', 'pdf')
+      if (params.toString()) url += `?${params.toString()}`
+      
+      const res = await fetch(url)
       if (res.ok) {
         const blob = await res.blob()
-        const url = window.URL.createObjectURL(blob)
+        const downloadUrl = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
-        a.href = url
-        a.download = `wedding-decor-report-${new Date().toISOString().split('T')[0]}.xlsx`
+        a.href = downloadUrl
+        
+        // استخراج اسم الملف من header
+        const contentDisposition = res.headers.get('Content-Disposition')
+        const defaultFilename = format === 'pdf' 
+          ? `alwan-al-khaleej-report-${new Date().toISOString().split('T')[0]}.pdf`
+          : `alwan-al-khaleej-report-${new Date().toISOString().split('T')[0]}.xlsx`
+        let filename = defaultFilename
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename\*?=['"]?(?:UTF-\d['"]*)?([^;'"{}]+)/i)
+          if (filenameMatch && filenameMatch[1]) {
+            filename = decodeURIComponent(filenameMatch[1])
+          }
+        }
+        
+        a.download = filename
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
-        window.URL.revokeObjectURL(url)
-        toast.success(language === 'ar' ? 'تم تصدير البيانات' : 'Data exported')
+        window.URL.revokeObjectURL(downloadUrl)
+        const formatName = format === 'pdf' ? 'PDF' : 'Excel'
+        toast.success(language === 'ar' ? `تم تصدير البيانات كـ ${formatName} مع الرسوم البيانية` : `Data exported as ${formatName} with charts`)
       }
     } catch (error) {
       toast.error(t.msg_error)
@@ -643,12 +664,10 @@ export default function Home() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
-                <Package className="w-6 h-6 text-white" />
-              </div>
+              <img src="/logo.png" alt="الوان الخليج" className="w-12 h-12 rounded-xl object-contain" />
               <div>
-                <h1 className="text-2xl font-bold text-amber-900">{t.title}</h1>
-                <p className="text-sm text-amber-700">{t.subtitle} <span className="text-xs bg-amber-200 px-2 py-0.5 rounded">v2.1</span></p>
+                <h1 className="text-2xl font-bold text-amber-900">الوان الخليج</h1>
+                <p className="text-sm text-amber-700">{language === 'ar' ? 'نظام إدارة تصنيع ديكور الأعراس' : 'Wedding Decor Management System'} <span className="text-xs bg-amber-200 px-2 py-0.5 rounded">v3.0</span></p>
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -664,8 +683,11 @@ export default function Home() {
                   <Globe className="w-4 h-4" /> EN
                 </Button>
               </div>
-              <Button onClick={handleExport} variant="outline" className="gap-2 bg-green-50 hover:bg-green-100 border-green-300 text-green-700">
-                <Download className="w-4 h-4" /> {t.btn_export || 'تصدير Excel'}
+              <Button onClick={() => handleExport(undefined, 'xlsx')} variant="outline" className="gap-2 bg-green-50 hover:bg-green-100 border-green-300 text-green-700">
+                <Download className="w-4 h-4" /> Excel
+              </Button>
+              <Button onClick={() => handleExport(undefined, 'pdf')} variant="outline" className="gap-2 bg-red-50 hover:bg-red-100 border-red-300 text-red-700">
+                <Download className="w-4 h-4" /> PDF
               </Button>
               <Button onClick={() => window.print()} variant="outline" className="gap-2">
                 <Printer className="w-4 h-4" /> {t.btn_print}
