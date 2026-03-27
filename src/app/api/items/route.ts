@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 // GET - جلب جميع العناصر
 export async function GET(request: NextRequest) {
   try {
+    console.log('Fetching items...')
+    
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status')
     const projectId = searchParams.get('projectId')
@@ -41,18 +43,34 @@ export async function GET(request: NextRequest) {
       }
     })
     
+    console.log(`Found ${items.length} items`)
+    
     return NextResponse.json(items)
   } catch (error) {
     console.error('Error fetching items:', error)
-    return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Failed to fetch items',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
 // POST - إنشاء عنصر جديد
 export async function POST(request: NextRequest) {
   try {
+    console.log('Creating new item...')
+    
     const body = await request.json()
+    console.log('Item data:', body)
+    
     const { name, image, priority, notes, totalQuantity, deadline, stages, projectId } = body
+    
+    // التحقق من الحقول المطلوبة
+    if (!name || !name.trim()) {
+      return NextResponse.json({ 
+        error: 'Item name is required' 
+      }, { status: 400 })
+    }
     
     // إنشاء بيانات المراحل مع القيم المقدمة من المستخدم
     const stagesData = stages ? stages.map((stage: any, index: number) => {
@@ -80,7 +98,7 @@ export async function POST(request: NextRequest) {
     // إنشاء العنصر مع المراحل
     const item = await db.productionItem.create({
       data: {
-        name,
+        name: name.trim(),
         image,
         priority: priority || 1,
         notes,
@@ -100,10 +118,15 @@ export async function POST(request: NextRequest) {
       }
     })
     
+    console.log('Item created:', item.id)
+    
     return NextResponse.json(item)
   } catch (error) {
     console.error('Error creating item:', error)
-    return NextResponse.json({ error: 'Failed to create item' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Failed to create item',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 

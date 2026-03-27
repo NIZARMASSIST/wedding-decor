@@ -18,24 +18,42 @@ const defaultDepartments = [
 // GET - جلب جميع الأقسام
 export async function GET() {
   try {
+    console.log('Fetching departments...')
+    
     let departments = await db.department.findMany({
       orderBy: { name: 'asc' }
     })
     
+    console.log(`Found ${departments.length} departments`)
+    
     // إذا لم تكن الأقسام موجودة، أنشئها
     if (departments.length === 0) {
-      await db.department.createMany({
-        data: defaultDepartments
-      })
-      departments = await db.department.findMany({
-        orderBy: { name: 'asc' }
-      })
+      console.log('No departments found, creating defaults...')
+      
+      try {
+        await db.department.createMany({
+          data: defaultDepartments,
+          skipDuplicates: true
+        })
+        
+        departments = await db.department.findMany({
+          orderBy: { name: 'asc' }
+        })
+        
+        console.log(`Created ${departments.length} default departments`)
+      } catch (createError) {
+        console.error('Error creating default departments:', createError)
+        // إذا فشل الإنشاء، أعد الأقسام الفارغة
+      }
     }
     
     return NextResponse.json(departments)
   } catch (error) {
     console.error('Error fetching departments:', error)
-    return NextResponse.json({ error: 'Failed to fetch departments' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Failed to fetch departments',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 

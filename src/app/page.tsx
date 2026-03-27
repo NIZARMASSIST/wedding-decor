@@ -219,39 +219,76 @@ export default function Home() {
   // جلب البيانات
   const fetchData = useCallback(async () => {
     try {
+      setLoading(true)
+      
       const [projectsRes, itemsRes, deptsRes] = await Promise.all([
         fetch('/api/projects'),
         fetch('/api/items'),
         fetch('/api/departments')
       ])
       
+      // التحقق من الاستجابات
+      if (!projectsRes.ok || !itemsRes.ok || !deptsRes.ok) {
+        console.error('API Error:', {
+          projects: projectsRes.status,
+          items: itemsRes.status,
+          depts: deptsRes.status
+        })
+        throw new Error('Failed to fetch data')
+      }
+      
       const projectsData = await projectsRes.json()
       const itemsData = await itemsRes.json()
       const deptsData = await deptsRes.json()
       
+      console.log('Fetched data:', {
+        projects: projectsData?.length || 0,
+        items: itemsData?.length || 0,
+        departments: deptsData?.length || 0
+      })
+      
       // جلب المرفقات لكل مرحلة
-      const attachmentsRes = await fetch('/api/attachments')
-      const attachmentsData = await attachmentsRes.json()
+      let attachmentsData: Attachment[] = []
+      let checklistData: ChecklistItem[] = []
       
-      // جلب checklist لكل مرحلة
-      const checklistRes = await fetch('/api/checklist')
-      const checklistData = await checklistRes.json()
+      try {
+        const attachmentsRes = await fetch('/api/attachments')
+        if (attachmentsRes.ok) {
+          attachmentsData = await attachmentsRes.json()
+        }
+      } catch (e) {
+        console.error('Error fetching attachments:', e)
+      }
       
-      const itemsWithAttachments = itemsData.map((item: ProductionItem) => ({
+      try {
+        const checklistRes = await fetch('/api/checklist')
+        if (checklistRes.ok) {
+          checklistData = await checklistRes.json()
+        }
+      } catch (e) {
+        console.error('Error fetching checklist:', e)
+      }
+      
+      const itemsWithAttachments = (Array.isArray(itemsData) ? itemsData : []).map((item: ProductionItem) => ({
         ...item,
-        stages: item.stages.map((stage: Stage) => ({
+        stages: item.stages?.map((stage: Stage) => ({
           ...stage,
           attachments: attachmentsData.filter((a: Attachment) => a.stageId === stage.id),
           checklist: checklistData.filter((c: ChecklistItem) => c.stageId === stage.id).sort((a: ChecklistItem, b: ChecklistItem) => a.order - b.order)
-        }))
+        })) || []
       }))
       
       setProjects(Array.isArray(projectsData) ? projectsData : [])
       setItems(itemsWithAttachments)
-      setDepartments(deptsData)
+      setDepartments(Array.isArray(deptsData) ? deptsData : [])
+      
     } catch (error) {
       console.error('Error fetching data:', error)
       toast.error(t.msg_error)
+      // تعيين قيم فارغة في حالة الخطأ
+      setProjects([])
+      setItems([])
+      setDepartments([])
     } finally {
       setLoading(false)
     }
