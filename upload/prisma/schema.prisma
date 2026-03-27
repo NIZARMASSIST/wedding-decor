@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./db/custom.db"
+}
+
+// الأقسام المتاحة في التصنيع
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique // اسم القسم: النجارة، الحدادة، الخياطة، الصبغ، الفوم، القطع الرقمي، أخرى
+  nameAr      String?  // الاسم بالعربية
+  color       String   @default("#6B7280") // لون القسم للتمييز
+  icon        String?  // أيقونة القسم
+  stages      Stage[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// العناصر المراد تصنيعها
+model ProductionItem {
+  id              String   @id @default(cuid())
+  name            String   // اسم العنصر
+  image           String?  // صورة العنصر (base64 أو رابط)
+  priority        Int      @default(1) // الأولوية (1 = أعلى أولوية)
+  notes           String?  // ملاحظات
+  status          String   @default("pending") // pending, in_progress, completed
+  totalQuantity   Int      @default(1) // الكمية الإجمالية
+  deadline        DateTime? // الموعد النهائي
+  stages          Stage[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// المراحل لكل عنصر
+model Stage {
+  id              String   @id @default(cuid())
+  itemId          String
+  item            ProductionItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  departmentId    String
+  department      Department @relation(fields: [departmentId], references: [id])
+  stageNumber     Int      // رقم المرحلة (1، 2، 3...)
+  timePerUnit     Float    @default(0) // الوقت للوحدة الواحدة بالساعات
+  quantity        Int      @default(1) // الكمية المطلوبة في هذه المرحلة
+  estimatedTime   Float    @default(0) // الوقت الإجمالي المحسوب = timePerUnit * quantity
+  shifts          Int      @default(1) // عدد الشفتات (1 = شفت واحد، 2 = شفتين)
+  status          String   @default("pending") // pending, in_progress, completed
+  startDate       DateTime? // تاريخ البداية الفعلي
+  endDate         DateTime? // تاريخ الانتهاء الفعلي
+  readyForNextAt  DateTime? // متى يكون جاهز للمرحلة التالية
+  notes           String?  // ملاحظات على المرحلة
+  attachments     Attachment[] // المرفقات (صور و PDF)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([itemId, stageNumber])
+}
+
+// المرفقات لكل مرحلة (صور و PDF)
+model Attachment {
+  id          String   @id @default(cuid())
+  stageId     String
+  stage       Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  fileName    String   // اسم الملف
+  fileType    String   // نوع الملف: image, pdf
+  fileData    String   // بيانات الملف (base64)
+  fileSize    Int      // حجم الملف بالبايت
+  description String?  // وصف الملف
+  uploadType  String   @default("work") // work: أثناء العمل, completion: عند الانتهاء
+  uploadedAt  DateTime @default(now())
+  
+  @@index([stageId])
+}
+
+// جدول الإعدادات
+model Settings {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
