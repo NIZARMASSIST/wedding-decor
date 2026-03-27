@@ -5,7 +5,7 @@ services:
     dockerfilePath: Dockerfile
     plan: free
     region: frankfurt
-    branch: main
+    branch: master
     envVars:
       - key: DATABASE_URL
         value: postgresql://wedding_decor_db_user:X9S9rn1ZKDQJmHDfmtpg05EnH7MMelVS@dpg-d736krvgi27c73cuvnog-a/wedding_decor_db
