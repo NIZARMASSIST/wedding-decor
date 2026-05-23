@@ -1,0 +1,23 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "external": {},
+    "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">{\"error\":\"email required\"}</pre></body></html>",
+    "metadata": {
+      "color-scheme": "light dark"
+    },
+    "title": "",
+    "url": "https://my-project-tau-hazel.vercel.app/api/auth",
+    "usage": {
+      "tokens": 48
+    },
+    "warning": "Target URL returned error 400: Bad Request"
+  },
+  "meta": {
+    "usage": {
+      "tokens": 48
+    }
+  },
+  "status": 20000
+}
