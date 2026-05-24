@@ -122,13 +122,13 @@ export default function AuthPage() {
       toast.error(t.password_required)
       return false
     }
-    if (formData.password.length < 6) {
-      toast.error(t.password_min)
-      return false
-    }
 
     // Registration-specific validation
     if (mode === 'register') {
+      if (formData.password.length < 6) {
+        toast.error(t.password_min)
+        return false
+      }
       if (!formData.name.trim()) {
         toast.error(t.name_required)
         return false
