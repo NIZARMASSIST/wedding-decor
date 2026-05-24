@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(materials)
   } catch (error) {
     console.error('Error fetching materials:', error)
-    return NextResponse.json({ error: 'Failed to fetch materials' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Failed to fetch materials'
+    return NextResponse.json({ error: 'Failed to fetch materials', details: message }, { status: 500 })
   }
 }
 
