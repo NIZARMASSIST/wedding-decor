@@ -1097,7 +1097,8 @@ export default function Home() {
     return catMap[cat] || cat
   }
 
-  const categories = [...new Set(materials.map(m => m.category))].sort()
+  // الفئات المتاحة - تُحسب فقط عند الحاجة
+  const getCategories = () => [...new Set(materials.map(m => m.category))].sort()
 
   // تصدير Excel أو PDF (عام أو حسب المشروع)
   const handleExport = async (projectId?: string, format: 'xlsx' | 'html' = 'xlsx') => {
@@ -1531,7 +1532,7 @@ export default function Home() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">{t.materials_all}</SelectItem>
-                      {categories.map(cat => (
+                      {getCategories().map(cat => (
                         <SelectItem key={cat} value={cat}>{getCategoryLabel(cat)}</SelectItem>
                       ))}
                     </SelectContent>
