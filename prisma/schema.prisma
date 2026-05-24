@@ -24,6 +24,7 @@ model Project {
   deadline    DateTime? // الموعد النهائي
   notes       String?  // ملاحظات
   items       ProductionItem[]
+  projectMaterials ProjectMaterial[] // المواد المرتبطة بالمشروع
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -141,4 +142,43 @@ model Settings {
   id    String @id @default(cuid())
   key   String @unique
   value String
+}
+
+// المواد الأولية والتشغيلية
+model Material {
+  id            String   @id @default(cuid())
+  name          String   // اسم المادة بالإنجليزية
+  nameAr        String?  // اسم المادة بالعربية
+  unit          String   // الوحدة (PCS, PKT, SHT, etc.)
+  unitAr        String?  // الوحدة بالعربية
+  category      String   // الفئة (CARPENTER, PAINTER, etc.)
+  categoryAr    String?  // الفئة بالعربية
+  unitPrice     Float    @default(0) // سعر الوحدة
+  stockQuantity  Int      @default(0) // الكمية في المخزون
+  status        String   @default("active") // active, inactive
+  description   String?  // وصف المادة
+  type          String   @default("raw") // raw: مواد أولية, operational: مواد تشغيلية
+  projectMaterials ProjectMaterial[] // ارتباطات المشاريع
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([category])
+  @@index([type])
+}
+
+// ارتباط المواد بالمشاريع
+model ProjectMaterial {
+  id          String   @id @default(cuid())
+  projectId   String   // المشروع
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  materialId  String   // المادة
+  material    Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  quantity    Int      @default(0) // الكمية المطلوبة
+  notes       String?  // ملاحظات
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, materialId])
+  @@index([projectId])
+  @@index([materialId])
 }
