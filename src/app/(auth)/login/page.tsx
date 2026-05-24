@@ -166,10 +166,8 @@ export default function AuthPage() {
 
       if (res.ok) {
         setSuccessMessage(mode === 'login' ? t.login_success : t.register_success)
-        // Redirect to main page after successful auth
-        setTimeout(() => {
-          window.location.href = '/'
-        }, 500)
+        // Use router.push for reliable client-side navigation
+        router.push('/')
       } else {
         setErrorMessage(data.error || (language === 'ar' ? 'حدث خطأ' : 'An error occurred'))
       }

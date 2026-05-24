@@ -71,10 +71,15 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
     
+    // Validate stages data - filter out stages with missing departmentId
+    const validStages = Array.isArray(stages) 
+      ? stages.filter((stage: any) => stage && stage.departmentId) 
+      : []
+    
     // إنشاء بيانات المراحل مع القيم المقدمة من المستخدم
-    const stagesData = stages ? stages.map((stage: any, index: number) => {
+    const stagesData = validStages.map((stage: any, index: number) => {
       const timePerUnit = parseFloat(stage.timePerUnit) || 0
-      const quantity = stage.quantity || 1
+      const quantity = parseInt(stage.quantity) || 1
       const estimatedTime = stage.estimatedTime !== undefined 
         ? parseFloat(stage.estimatedTime) 
         : (timePerUnit * quantity)
@@ -85,26 +90,26 @@ export async function POST(request: NextRequest) {
         timePerUnit,
         quantity,
         estimatedTime,
-        shifts: stage.shifts || 1,
+        shifts: parseInt(stage.shifts) || 1,
         shift1Start: stage.shift1Start || null,
         shift1End: stage.shift1End || null,
         shift2Start: stage.shift2Start || null,
         shift2End: stage.shift2End || null,
-        notes: stage.notes
+        notes: stage.notes || null
       }
-    }) : []
+    })
     
     // إنشاء العنصر مع المراحل
     const item = await db.productionItem.create({
       data: {
         name: name.trim(),
-        image,
-        priority: priority || 1,
-        notes,
-        totalQuantity: totalQuantity || 1,
+        image: image || null,
+        priority: parseInt(priority) || 1,
+        notes: notes || null,
+        totalQuantity: parseInt(totalQuantity) || 1,
         deadline: deadline ? new Date(deadline) : null,
         projectId: projectId || null,
-        stages: stages ? {
+        stages: stagesData.length > 0 ? {
           create: stagesData
         } : undefined
       },
@@ -134,18 +139,24 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     const { id, name, image, priority, notes, totalQuantity, deadline, status, projectId } = body
     
+    if (!id) {
+      return NextResponse.json({ error: 'Item ID is required' }, { status: 400 })
+    }
+    
+    // Build update data object with only provided fields
+    const updateData: any = {}
+    if (name !== undefined) updateData.name = name
+    if (image !== undefined) updateData.image = image
+    if (priority !== undefined) updateData.priority = priority
+    if (notes !== undefined) updateData.notes = notes
+    if (totalQuantity !== undefined) updateData.totalQuantity = totalQuantity
+    if (deadline !== undefined) updateData.deadline = deadline ? new Date(deadline) : null
+    if (status !== undefined) updateData.status = status
+    if (projectId !== undefined) updateData.projectId = projectId || null
+    
     const item = await db.productionItem.update({
       where: { id },
-      data: {
-        name,
-        image,
-        priority,
-        notes,
-        totalQuantity,
-        deadline: deadline ? new Date(deadline) : null,
-        status,
-        projectId: projectId !== undefined ? projectId : undefined
-      },
+      data: updateData,
       include: {
         stages: {
           include: {

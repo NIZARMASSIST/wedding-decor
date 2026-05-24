@@ -332,23 +332,23 @@ export default function Home() {
               }
             } catch {}
           }
+          // Auth confirmed - now fetch app data
+          fetchData()
         } else {
           // Not authenticated - redirect to login
           window.location.href = '/login'
+          return
         }
       } catch {
         // Error fetching user - redirect to login
         window.location.href = '/login'
+        return
       } finally {
         setIsAuthChecking(false)
       }
     }
     fetchUser()
   }, [])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
 
   // رفع الصورة
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
@@ -913,17 +913,31 @@ export default function Home() {
 
   // حساب الإحصائيات للجدول الزمني
   const calculateStats = () => {
-    const allStages = items.flatMap(item => item.stages)
+    const safeItems = Array.isArray(items) ? items : []
+    const allStages = safeItems.flatMap(item => Array.isArray(item.stages) ? item.stages : [])
     const totalStages = allStages.length
-    const completedStages = allStages.filter(s => s.status === 'completed').length
-    const inProgressStages = allStages.filter(s => s.status === 'in_progress').length
-    const pendingStages = allStages.filter(s => s.status === 'pending').length
-    const totalEstimatedTime = allStages.reduce((sum, s) => sum + (s.estimatedTime || 0), 0)
+    const completedStages = allStages.filter(s => s?.status === 'completed').length
+    const inProgressStages = allStages.filter(s => s?.status === 'in_progress').length
+    const pendingStages = allStages.filter(s => s?.status === 'pending').length
+    const totalEstimatedTime = allStages.reduce((sum, s) => sum + (s?.estimatedTime || 0), 0)
     
     return { totalStages, completedStages, inProgressStages, pendingStages, totalEstimatedTime,
       progress: totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0 }
   }
 
+  // Auth check must come FIRST - before any data-dependent rendering
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
+          <p className="text-amber-700 font-medium">{language === 'ar' ? 'جاري التحقق...' : 'Authenticating...'}</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Data loading check comes after auth
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-100">
@@ -935,18 +949,13 @@ export default function Home() {
     )
   }
 
-  const stats = calculateStats()
-
-  // Show loading while checking authentication
-  if (isAuthChecking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
-          <p className="text-amber-700 font-medium">{language === 'ar' ? 'جاري التحميل...' : 'Loading...'}</p>
-        </div>
-      </div>
-    )
+  // Safely calculate stats with error handling
+  let stats
+  try {
+    stats = calculateStats()
+  } catch (error) {
+    console.error('Error calculating stats:', error)
+    stats = { totalStages: 0, completedStages: 0, inProgressStages: 0, pendingStages: 0, totalEstimatedTime: 0, progress: 0 }
   }
 
   return (
