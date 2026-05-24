@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Eye, EyeOff, Globe, LogIn, UserPlus } from 'lucide-react'
-import { toast } from 'sonner'
 
 type Language = 'ar' | 'en'
 type AuthMode = 'login' | 'register'
@@ -46,6 +45,8 @@ const translations = {
     loading: 'جاري التحميل...',
     app_title: 'الوان الخليج',
     app_subtitle: 'نظام إدارة تصنيع ديكور الأعراس',
+    incorrect_credentials: 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+    server_error: 'خطأ في الاتصال بالخادم',
   },
   en: {
     login_title: 'Login',
@@ -80,6 +81,8 @@ const translations = {
     loading: 'Loading...',
     app_title: 'Alwan Al Khaleej',
     app_subtitle: 'Wedding Decor Management System',
+    incorrect_credentials: 'Incorrect email or password',
+    server_error: 'Server connection error',
   }
 }
 
@@ -90,6 +93,8 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
 
   const t = translations[language]
   const isRTL = language === 'ar'
@@ -103,49 +108,45 @@ export default function AuthPage() {
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+    // Clear error when user types
+    if (errorMessage) setErrorMessage('')
   }
 
-  const validateForm = (): boolean => {
-    // Email validation
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErrorMessage('')
+    setSuccessMessage('')
+
+    // Basic validation
     if (!formData.email.trim()) {
-      toast.error(t.email_required)
-      return false
+      setErrorMessage(t.email_required)
+      return
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(formData.email.trim())) {
-      toast.error(t.email_invalid)
-      return false
+      setErrorMessage(t.email_invalid)
+      return
     }
-
-    // Password validation
     if (!formData.password.trim()) {
-      toast.error(t.password_required)
-      return false
+      setErrorMessage(t.password_required)
+      return
     }
 
     // Registration-specific validation
     if (mode === 'register') {
       if (formData.password.length < 6) {
-        toast.error(t.password_min)
-        return false
+        setErrorMessage(t.password_min)
+        return
       }
       if (!formData.name.trim()) {
-        toast.error(t.name_required)
-        return false
+        setErrorMessage(t.name_required)
+        return
       }
       if (formData.password !== formData.confirmPassword) {
-        toast.error(t.passwords_not_match)
-        return false
+        setErrorMessage(t.passwords_not_match)
+        return
       }
     }
-
-    return true
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!validateForm()) return
 
     setIsLoading(true)
 
@@ -164,15 +165,16 @@ export default function AuthPage() {
       const data = await res.json()
 
       if (res.ok) {
-        toast.success(mode === 'login' ? t.login_success : t.register_success)
+        setSuccessMessage(mode === 'login' ? t.login_success : t.register_success)
         // Redirect to main page after successful auth
-        router.push('/')
-        router.refresh()
+        setTimeout(() => {
+          window.location.href = '/'
+        }, 500)
       } else {
-        toast.error(data.error || (language === 'ar' ? 'حدث خطأ' : 'An error occurred'))
+        setErrorMessage(data.error || (language === 'ar' ? 'حدث خطأ' : 'An error occurred'))
       }
     } catch {
-      toast.error(language === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Server connection error')
+      setErrorMessage(language === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Server connection error')
     } finally {
       setIsLoading(false)
     }
@@ -183,6 +185,8 @@ export default function AuthPage() {
     setFormData({ name: '', email: '', password: '', confirmPassword: '' })
     setShowPassword(false)
     setShowConfirmPassword(false)
+    setErrorMessage('')
+    setSuccessMessage('')
   }
 
   return (
@@ -225,6 +229,20 @@ export default function AuthPage() {
           <h1 className="text-3xl font-bold text-amber-900">{t.app_title}</h1>
           <p className="text-amber-700 mt-1">{t.app_subtitle}</p>
         </div>
+
+        {/* Error message - shown prominently */}
+        {errorMessage && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-300 rounded-lg text-red-700 text-center font-medium text-sm">
+            {errorMessage}
+          </div>
+        )}
+
+        {/* Success message */}
+        {successMessage && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-300 rounded-lg text-green-700 text-center font-medium text-sm">
+            {successMessage}
+          </div>
+        )}
 
         {/* Auth card */}
         <Card className="border-amber-200 shadow-xl bg-white/90 backdrop-blur-sm">
@@ -348,7 +366,7 @@ export default function AuthPage() {
                   <button
                     type="button"
                     className="text-sm text-amber-600 hover:text-amber-800 hover:underline"
-                    onClick={() => toast.info(language === 'ar' ? 'ميزة استعادة كلمة المرور قادمة قريباً' : 'Password recovery coming soon')}
+                    onClick={() => setErrorMessage(language === 'ar' ? 'ميزة استعادة كلمة المرور قادمة قريباً' : 'Password recovery coming soon')}
                   >
                     {t.forgot_password}
                   </button>
