@@ -17,7 +17,7 @@ import {
   Plus, Trash2, Calendar, Clock, Package, Users, 
   Settings, Printer, ChevronUp, ChevronDown, Edit,
   Globe, Paperclip, Download, Eye, Play, CheckCircle2,
-  FolderOpen, BarChart3, PieChart
+  FolderOpen, BarChart3, PieChart, LogOut, User
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { translations, Language } from '@/lib/i18n'
@@ -166,6 +166,35 @@ export default function Home() {
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('projects')
+  
+  // حالة المستخدم الحالي
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; role: string } | null>(null)
+  
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      setCurrentUser(null)
+      window.location.href = '/login'
+    } catch {
+      toast.error(t.msg_error)
+    }
+  }
+  
+  // جلب بيانات المستخدم الحالي
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          setCurrentUser(data.user)
+        }
+      } catch {
+        // User not authenticated, middleware will redirect
+      }
+    }
+    fetchUser()
+  }, [])
   
   // حالات النوافذ
   const [addProjectOpen, setAddProjectOpen] = useState(false)
@@ -857,6 +886,18 @@ export default function Home() {
               <Button onClick={() => window.print()} variant="outline" className="gap-2">
                 <Printer className="w-4 h-4" /> {t.btn_print}
               </Button>
+              {currentUser && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg text-sm">
+                    <User className="w-4 h-4" />
+                    <span className="font-medium">{currentUser.name}</span>
+                  </div>
+                  <Button onClick={handleLogout} variant="outline" size="sm" className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
+                    <LogOut className="w-4 h-4" />
+                    {language === 'ar' ? 'خروج' : 'Logout'}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>

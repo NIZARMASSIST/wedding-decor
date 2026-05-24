@@ -49,8 +49,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching items:', error)
     return NextResponse.json({ 
-      error: 'Failed to fetch items',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to fetch items'
     }, { status: 500 })
   }
 }
@@ -124,8 +123,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating item:', error)
     return NextResponse.json({ 
-      error: 'Failed to create item',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to create item'
     }, { status: 500 })
   }
 }

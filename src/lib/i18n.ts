@@ -134,6 +134,23 @@ export const translations = {
     bytes: 'بايت',
     kb: 'كيلوبايت',
     mb: 'ميجابايت',
+    
+    // المصادقة
+    auth_login: 'تسجيل الدخول',
+    auth_register: 'إنشاء حساب',
+    auth_logout: 'تسجيل الخروج',
+    auth_email: 'البريد الإلكتروني',
+    auth_password: 'كلمة المرور',
+    auth_name: 'الاسم الكامل',
+    auth_confirm_password: 'تأكيد كلمة المرور',
+    auth_forgot_password: 'نسيت كلمة المرور؟',
+    auth_no_account: 'ليس لديك حساب؟',
+    auth_has_account: 'لديك حساب بالفعل؟',
+    auth_login_success: 'تم تسجيل الدخول بنجاح',
+    auth_register_success: 'تم إنشاء الحساب بنجاح',
+    auth_password_min: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+    auth_passwords_not_match: 'كلمات المرور غير متطابقة',
+    auth_invalid_credentials: 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
   },
   
   en: {
@@ -270,6 +287,23 @@ export const translations = {
     bytes: 'bytes',
     kb: 'KB',
     mb: 'MB',
+    
+    // Auth
+    auth_login: 'Login',
+    auth_register: 'Register',
+    auth_logout: 'Logout',
+    auth_email: 'Email',
+    auth_password: 'Password',
+    auth_name: 'Full Name',
+    auth_confirm_password: 'Confirm Password',
+    auth_forgot_password: 'Forgot password?',
+    auth_no_account: "Don't have an account?",
+    auth_has_account: 'Already have an account?',
+    auth_login_success: 'Login successful',
+    auth_register_success: 'Account created successfully',
+    auth_password_min: 'Password must be at least 6 characters',
+    auth_passwords_not_match: 'Passwords do not match',
+    auth_invalid_credentials: 'Incorrect email or password',
   }
 }
 

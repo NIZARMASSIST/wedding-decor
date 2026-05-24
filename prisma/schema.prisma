@@ -123,6 +123,18 @@ model ChecklistItem {
   @@index([stageId])
 }
 
+// المستخدمين
+model User {
+  id        String   @id @default(cuid())
+  name      String   // اسم المستخدم
+  email     String   @unique // البريد الإلكتروني (فريد)
+  password  String   // كلمة المرور مشفرة (bcrypt)
+  role      String   @default("user") // user, admin
+  status    String   @default("active") // active, under_review, suspended
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // جدول الإعدادات
 model Settings {
   id    String @id @default(cuid())

@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching projects:', error)
     return NextResponse.json({ 
       error: 'Failed to fetch projects',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
     }, { status: 500 })
   }
 }
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     console.error('Error creating project:', error)
     return NextResponse.json({ 
       error: 'Failed to create project',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
     }, { status: 500 })
   }
 }
@@ -126,7 +126,7 @@ export async function PUT(request: NextRequest) {
     console.error('Error updating project:', error)
     return NextResponse.json({ 
       error: 'Failed to update project',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
     }, { status: 500 })
   }
 }
@@ -156,7 +156,7 @@ export async function DELETE(request: NextRequest) {
     console.error('Error deleting project:', error)
     return NextResponse.json({ 
       error: 'Failed to delete project',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
     }, { status: 500 })
   }
 }

@@ -51,8 +51,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching departments:', error)
     return NextResponse.json({ 
-      error: 'Failed to fetch departments',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to fetch departments'
     }, { status: 500 })
   }
 }
