@@ -95,6 +95,7 @@ interface Project {
   nameAr?: string
   clientName?: string
   description?: string
+  image?: string
   status: string
   startDate?: string
   endDate?: string
@@ -164,6 +165,7 @@ export default function Home() {
   const [projects, setProjects] = useState<Project[]>([])
   const [items, setItems] = useState<ProductionItem[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
+  const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('projects')
   
@@ -209,7 +211,7 @@ export default function Home() {
 
   // حالات العناصر الجديدة
   const [newProject, setNewProject] = useState({
-    name: '', nameAr: '', clientName: '', description: '', notes: '',
+    name: '', nameAr: '', clientName: '', description: '', image: '', notes: '',
     startDate: '', deadline: ''
   })
   
@@ -318,6 +320,16 @@ export default function Home() {
         if (res.ok) {
           const data = await res.json()
           setCurrentUser(data.user)
+          // Fetch users if admin
+          if (data.user?.role === 'admin') {
+            try {
+              const usersRes = await fetch('/api/users')
+              if (usersRes.ok) {
+                const usersData = await usersRes.json()
+                setUsers(usersData)
+              }
+            } catch {}
+          }
         } else {
           // Not authenticated - redirect to login
           window.location.href = '/login'
@@ -459,12 +471,12 @@ export default function Home() {
       if (res.ok) {
         toast.success(language === 'ar' ? 'تم إضافة المشروع' : 'Project added')
         setAddProjectOpen(false)
-        setNewProject({ name: '', nameAr: '', clientName: '', description: '', notes: '', startDate: '', deadline: '' })
+        setNewProject({ name: '', nameAr: '', clientName: '', description: '', image: '', notes: '', startDate: '', deadline: '' })
         fetchData()
       } else {
-        const errorData = await res.json()
+        const errorData = await res.json().catch(() => ({}))
         console.error('Error response:', errorData)
-        toast.error(language === 'ar' ? 'فشل في إضافة المشروع' : 'Failed to add project')
+        toast.error(errorData.error || (language === 'ar' ? 'فشل في إضافة المشروع' : 'Failed to add project'))
       }
     } catch (error) {
       console.error('Error adding project:', error)
@@ -518,7 +530,7 @@ export default function Home() {
       const res = await fetch('/api/items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newItem, stages: newStages })
+        body: JSON.stringify({ ...newItem, stages: newStages, projectId: newItem.projectId || null })
       })
       
       if (res.ok) {
@@ -527,6 +539,9 @@ export default function Home() {
         setNewItem({ name: '', image: '', priority: 1, notes: '', totalQuantity: 1, deadline: '', projectId: '' })
         setNewStages([])
         fetchData()
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        toast.error(errData.error || t.msg_error)
       }
     } catch (error) {
       toast.error(t.msg_error)
@@ -770,6 +785,66 @@ export default function Home() {
     }
   }
 
+  // جلب المستخدمين
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/users')
+      if (res.ok) {
+        const data = await res.json()
+        setUsers(data)
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    }
+  }
+
+  const handleToggleUserRole = async (user: any) => {
+    try {
+      const newRole = user.role === 'admin' ? 'user' : 'admin'
+      const res = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: user.id, role: newRole })
+      })
+      if (res.ok) {
+        toast.success(language === 'ar' ? 'تم تحديث الدور' : 'Role updated')
+        fetchUsers()
+      }
+    } catch (error) {
+      toast.error(t.msg_error)
+    }
+  }
+
+  const handleToggleUserStatus = async (user: any) => {
+    try {
+      const newStatus = user.status === 'suspended' ? 'active' : 'suspended'
+      const res = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: user.id, status: newStatus })
+      })
+      if (res.ok) {
+        toast.success(language === 'ar' ? 'تم تحديث الحالة' : 'Status updated')
+        fetchUsers()
+      }
+    } catch (error) {
+      toast.error(t.msg_error)
+    }
+  }
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذا المستخدم؟' : 'Are you sure you want to delete this user?')) return
+    try {
+      const res = await fetch(`/api/users?id=${userId}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success(language === 'ar' ? 'تم حذف المستخدم' : 'User deleted')
+        fetchUsers()
+      }
+    } catch (error) {
+      toast.error(t.msg_error)
+    }
+  }
+
   // تصدير Excel أو PDF (عام أو حسب المشروع)
   const handleExport = async (projectId?: string, format: 'xlsx' | 'html' = 'xlsx') => {
     try {
@@ -934,6 +1009,11 @@ export default function Home() {
             <TabsTrigger value="schedule" className="gap-2"><Calendar className="w-4 h-4" /> {t.nav_schedule}</TabsTrigger>
             <TabsTrigger value="charts" className="gap-2"><BarChart3 className="w-4 h-4" /> {language === 'ar' ? 'الرسوم البيانية' : 'Charts'}</TabsTrigger>
             <TabsTrigger value="departments" className="gap-2"><Users className="w-4 h-4" /> {t.nav_departments}</TabsTrigger>
+            {currentUser?.role === 'admin' && (
+              <TabsTrigger value="users" className="gap-2">
+                <Users className="w-4 h-4" /> {language === 'ar' ? 'المستخدمين' : 'Users'}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* تبويب المشاريع */}
@@ -981,6 +1061,20 @@ export default function Home() {
                       <Label>{language === 'ar' ? 'ملاحظات' : 'Notes'}</Label>
                       <Textarea value={newProject.notes} onChange={(e) => setNewProject(prev => ({ ...prev, notes: e.target.value }))} rows={2} />
                     </div>
+                    <div className="space-y-2">
+                      <Label>{language === 'ar' ? 'صورة المشروع' : 'Project Image'}</Label>
+                      <Input type="file" accept="image/*" onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          const reader = new FileReader()
+                          reader.onloadend = () => {
+                            setNewProject(prev => ({ ...prev, image: reader.result as string }))
+                          }
+                          reader.readAsDataURL(file)
+                        }
+                      }} />
+                      {newProject.image && <img src={newProject.image} alt="preview" className="w-20 h-20 object-cover rounded-lg border mt-2" />}
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setAddProjectOpen(false)}>{t.btn_cancel}</Button>
@@ -1007,9 +1101,13 @@ export default function Home() {
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3">
+                          {project.image ? (
+                            <img src={project.image} alt={project.nameAr || project.name} className="w-10 h-10 rounded-lg object-cover" />
+                          ) : (
                           <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold">
                             {project.nameAr?.charAt(0) || project.name.charAt(0)}
                           </div>
+                          )}
                           <div>
                             <CardTitle className="text-lg">{project.nameAr || project.name}</CardTitle>
                             <CardDescription className="flex items-center gap-2 flex-wrap">
@@ -1072,12 +1170,12 @@ export default function Home() {
                     {/* اختيار المشروع */}
                     <div className="space-y-2">
                       <Label>{language === 'ar' ? 'المشروع' : 'Project'}</Label>
-                      <Select value={newItem.projectId} onValueChange={(val) => setNewItem(prev => ({ ...prev, projectId: val }))}>
+                      <Select value={newItem.projectId || '_none'} onValueChange={(val) => setNewItem(prev => ({ ...prev, projectId: val === '_none' ? '' : val }))}>
                         <SelectTrigger>
                           <SelectValue placeholder={language === 'ar' ? 'اختر المشروع (اختياري)' : 'Select Project (optional)'} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">{language === 'ar' ? 'بدون مشروع' : 'No Project'}</SelectItem>
+                          <SelectItem value="_none">{language === 'ar' ? 'بدون مشروع' : 'No Project'}</SelectItem>
                           {projects.map(project => (
                             <SelectItem key={project.id} value={project.id}>
                               {project.nameAr || project.name}
@@ -1998,8 +2096,127 @@ export default function Home() {
               ))}
             </div>
           </TabsContent>
+
+          {currentUser?.role === 'admin' && (
+            <TabsContent value="users" className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-amber-900">{language === 'ar' ? 'إدارة المستخدمين' : 'User Management'} ({users.length})</h2>
+              </div>
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{language === 'ar' ? 'الاسم' : 'Name'}</TableHead>
+                        <TableHead>{language === 'ar' ? 'البريد الإلكتروني' : 'Email'}</TableHead>
+                        <TableHead>{language === 'ar' ? 'الدور' : 'Role'}</TableHead>
+                        <TableHead>{language === 'ar' ? 'الحالة' : 'Status'}</TableHead>
+                        <TableHead>{language === 'ar' ? 'تاريخ التسجيل' : 'Created'}</TableHead>
+                        <TableHead>{language === 'ar' ? 'إجراءات' : 'Actions'}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map(user => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.name}</TableCell>
+                          <TableCell dir="ltr">{user.email}</TableCell>
+                          <TableCell>
+                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                              {user.role === 'admin' ? (language === 'ar' ? 'مشرف' : 'Admin') : (language === 'ar' ? 'مستخدم' : 'User')}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={user.status === 'active' ? 'default' : user.status === 'suspended' ? 'destructive' : 'outline'}>
+                              {user.status === 'active' ? (language === 'ar' ? 'نشط' : 'Active') : 
+                               user.status === 'suspended' ? (language === 'ar' ? 'معلق' : 'Suspended') : 
+                               (language === 'ar' ? 'قيد المراجعة' : 'Under Review')}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{new Date(user.createdAt).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US')}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" onClick={() => handleToggleUserRole(user)}>
+                                {user.role === 'admin' ? (language === 'ar' ? 'إلغاء الإدارة' : 'Remove Admin') : (language === 'ar' ? 'جعل مشرف' : 'Make Admin')}
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => handleToggleUserStatus(user)}>
+                                {user.status === 'suspended' ? (language === 'ar' ? 'تفعيل' : 'Activate') : (language === 'ar' ? 'تعليق' : 'Suspend')}
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user.id)}>
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </main>
+
+      {/* نافذة تعديل المشروع */}
+      <Dialog open={editProjectOpen} onOpenChange={setEditProjectOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{language === 'ar' ? 'تعديل المشروع' : 'Edit Project'}</DialogTitle></DialogHeader>
+          {editingProject && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{language === 'ar' ? 'اسم المشروع (إنجليزي)' : 'Name (English)'}</Label>
+                  <Input value={editingProject.name} onChange={(e) => setEditingProject(prev => prev ? ({ ...prev, name: e.target.value }) : prev)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>{language === 'ar' ? 'الاسم (عربي)' : 'Name (Arabic)'}</Label>
+                  <Input value={editingProject.nameAr || ''} onChange={(e) => setEditingProject(prev => prev ? ({ ...prev, nameAr: e.target.value }) : prev)} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>{language === 'ar' ? 'اسم العميل' : 'Client Name'}</Label>
+                <Input value={editingProject.clientName || ''} onChange={(e) => setEditingProject(prev => prev ? ({ ...prev, clientName: e.target.value }) : prev)} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{language === 'ar' ? 'تاريخ البداية' : 'Start Date'}</Label>
+                  <Input type="date" value={editingProject.startDate ? editingProject.startDate.slice(0, 10) : ''} onChange={(e) => setEditingProject(prev => prev ? ({ ...prev, startDate: e.target.value }) : prev)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>{language === 'ar' ? 'الموعد النهائي' : 'Deadline'}</Label>
+                  <Input type="date" value={editingProject.deadline ? editingProject.deadline.slice(0, 10) : ''} onChange={(e) => setEditingProject(prev => prev ? ({ ...prev, deadline: e.target.value }) : prev)} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>{language === 'ar' ? 'الوصف' : 'Description'}</Label>
+                <Textarea value={editingProject.description || ''} onChange={(e) => setEditingProject(prev => prev ? ({ ...prev, description: e.target.value }) : prev)} rows={2} />
+              </div>
+              <div className="space-y-2">
+                <Label>{language === 'ar' ? 'ملاحظات' : 'Notes'}</Label>
+                <Textarea value={editingProject.notes || ''} onChange={(e) => setEditingProject(prev => prev ? ({ ...prev, notes: e.target.value }) : prev)} rows={2} />
+              </div>
+              <div className="space-y-2">
+                <Label>{language === 'ar' ? 'صورة المشروع' : 'Project Image'}</Label>
+                <Input type="file" accept="image/*" onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) {
+                    const reader = new FileReader()
+                    reader.onloadend = () => {
+                      setEditingProject(prev => prev ? ({ ...prev, image: reader.result as string }) : prev)
+                    }
+                    reader.readAsDataURL(file)
+                  }
+                }} />
+                {editingProject?.image && <img src={editingProject.image} alt="preview" className="w-20 h-20 object-cover rounded-lg border mt-2" />}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditProjectOpen(false)}>{t.btn_cancel}</Button>
+            <Button onClick={handleEditProject}>{t.btn_save}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* نافذة تعديل العنصر */}
       <Dialog open={editItemOpen} onOpenChange={setEditItemOpen}>
@@ -2010,12 +2227,12 @@ export default function Home() {
               {/* اختيار المشروع */}
               <div className="space-y-2">
                 <Label>{language === 'ar' ? 'المشروع' : 'Project'}</Label>
-                <Select value={editingItem.projectId || ''} onValueChange={(val) => setEditingItem({ ...editingItem, projectId: val || undefined })}>
+                <Select value={editingItem.projectId || '_none'} onValueChange={(val) => setEditingItem({ ...editingItem, projectId: val === '_none' ? undefined : val })}>
                   <SelectTrigger>
                     <SelectValue placeholder={language === 'ar' ? 'اختر المشروع (اختياري)' : 'Select Project (optional)'} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">{language === 'ar' ? 'بدون مشروع' : 'No Project'}</SelectItem>
+                    <SelectItem value="_none">{language === 'ar' ? 'بدون مشروع' : 'No Project'}</SelectItem>
                     {projects.map(project => (
                       <SelectItem key={project.id} value={project.id}>
                         {project.nameAr || project.name}

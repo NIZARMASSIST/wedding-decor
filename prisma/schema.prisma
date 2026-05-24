@@ -17,6 +17,7 @@ model Project {
   nameAr      String?  // اسم المشروع بالعربية
   clientName  String?  // اسم العميل
   description String?  // وصف المشروع
+  image       String?  // صورة المشروع
   status      String   @default("active") // active, completed, cancelled
   startDate   DateTime? // تاريخ البداية
   endDate     DateTime? // تاريخ الانتهاء
