@@ -181,6 +181,8 @@ export default function Home() {
   }
   
   // جلب بيانات المستخدم الحالي
+  const [isAuthChecking, setIsAuthChecking] = useState(true)
+  
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -188,13 +190,31 @@ export default function Home() {
         if (res.ok) {
           const data = await res.json()
           setCurrentUser(data.user)
+        } else {
+          // Not authenticated - redirect to login
+          window.location.href = '/login'
         }
       } catch {
-        // User not authenticated, middleware will redirect
+        // Error fetching user - redirect to login
+        window.location.href = '/login'
+      } finally {
+        setIsAuthChecking(false)
       }
     }
     fetchUser()
   }, [])
+  
+  // Show loading while checking authentication
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
+          <p className="text-amber-700 font-medium">{t.loading || 'جاري التحميل...'}</p>
+        </div>
+      </div>
+    )
+  }
   
   // حالات النوافذ
   const [addProjectOpen, setAddProjectOpen] = useState(false)
