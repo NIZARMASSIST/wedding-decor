@@ -32,6 +32,9 @@ model User {
   changeLogs     ChangeLog[]     // التغييرات التي قام بها (للمشرفين)
   notifications  Notification[]  // الإشعارات المستلمة
   usedMaterials  UsedMaterial[]  // المواد المستعملة التي أضافتها (للستور كيبر)
+  conversationParticipants ConversationParticipant[]
+  sentMessages   Message[]
+  messageReads   MessageRead[]
 }
 
 // المشاريع
@@ -263,4 +266,72 @@ model Notification {
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
+}
+
+// المحادثات
+model Conversation {
+  id          String   @id @default(cuid())
+  name        String?  // اسم المحادثة (للمجموعات)
+  type        String   @default("DIRECT") // DIRECT, GROUP, BROADCAST
+  image       String?  // صورة المحادثة
+  createdBy   String?  // من أنشأ المحادثة
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([type])
+  @@index([createdAt])
+}
+
+// مشاركو المحادثة
+model ConversationParticipant {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt     DateTime? // آخر مرة قرأ فيها المستخدم الرسائل
+  joinedAt       DateTime @default(now())
+
+  @@unique([conversationId, userId])
+  @@index([conversationId])
+  @@index([userId])
+}
+
+// الرسائل
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  content        String?  // محتوى الرسالة النصية
+  messageType    String   @default("TEXT") // TEXT, IMAGE, FILE, VOICE
+  fileUrl        String?  // رابط الملف أو الصورة (base64)
+  fileName       String?  // اسم الملف
+  fileSize       Int?     // حجم الملف
+  isDeleted      Boolean  @default(false) // هل تم حذف الرسالة
+  createdAt      DateTime @default(now())
+
+  reads MessageRead[]
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+// قراءة الرسائل
+model MessageRead {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt    DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
 }

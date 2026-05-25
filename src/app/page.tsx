@@ -20,10 +20,11 @@ import {
   Globe, Paperclip, Download, Eye, Play, CheckCircle2,
   FolderOpen, BarChart3, PieChart, LogOut, User, Upload,
   Search, Filter, Box, X, LayoutGrid, List, ImageIcon,
-  MapPin, UserCheck, ClipboardList
+  MapPin, UserCheck, ClipboardList, MessageCircle
 
 } from 'lucide-react'
 import MaterialsTab from '@/components/MaterialsTab'
+import ChatSidebar from '@/components/ChatSidebar'
 import { toast } from 'sonner'
 import { translations, Language } from '@/lib/i18n'
 
@@ -312,6 +313,7 @@ export default function Home() {
   const [usedMaterialSearchQuery, setUsedMaterialSearchQuery] = useState('')
   const [editingUserField, setEditingUserField] = useState<{userId: string, field: 'name' | 'phone'} | null>(null)
   const [editUserValue, setEditUserValue] = useState('')
+  const [chatOpen, setChatOpen] = useState(false)
 
   // جلب المواد
   const fetchMaterials = useCallback(async () => {
@@ -1313,6 +1315,16 @@ export default function Home() {
               </Button>
               {currentUser && (
                 <div className="flex items-center gap-2">
+                  {/* زر الدردشة */}
+                  <Button
+                    variant={chatOpen ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChatOpen(!chatOpen)}
+                    className={`gap-1 relative ${chatOpen ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'text-amber-700 border-amber-300 hover:bg-amber-50'}`}
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    {language === 'ar' ? 'الدردشة' : 'Chat'}
+                  </Button>
                   {/* إشعارات */}
                   {(currentUser.role === 'general_manager' || currentUser.role === 'executive_manager') && (
                     <div className="relative">
@@ -3605,6 +3617,13 @@ export default function Home() {
         </DialogContent>
       </Dialog>
 
+      {/* شريط الدردشة الجانبي */}
+      <ChatSidebar
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
+        currentUser={currentUser}
+        language={language}
+      />
     </div>
   )
 }
