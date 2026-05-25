@@ -1,0 +1,9 @@
+{
+  "experimentalServices": {
+    "wedding-decor": {
+      "type": "web",
+      "routePrefix": "/",
+      "framework": "nextjs"
+    }
+  }
+}

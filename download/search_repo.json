@@ -1,0 +1,47 @@
+[
+  {
+    "url": "https://github.com/vercel/hazel",
+    "name": "vercel/hazel: Lightweight update server for Electron apps - GitHub",
+    "snippet": "This project lets you deploy an update server for Electron apps with ease. You only need to click a button. The result will be faster and more lightweight.",
+    "host_name": "github.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=iXbsbjnINJk",
+    "name": "Tutorial: App Development from v0 → Vercel → GitHub  - YouTube",
+    "snippet": "v0 is an amazing tool for rapidly prototyping as well as developing fully featured apps. One of my favorite workflows is to frame out the ...",
+    "host_name": "www.youtube.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/vercel/hazel/issues/39",
+    "name": "Private repo not working · Issue #39 · vercel/hazel - GitHub",
+    "snippet": "So additionally to the problem above: Is it possible to use a private GitHub Repository with Hazel, without needing to own a server for a proxy?",
+    "host_name": "github.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://vercel.com/docs/git/vercel-for-github",
+    "name": "Deploying GitHub Projects with Vercel",
+    "snippet": "The Deploying a Git repository guide outlines how to create a new Vercel Project from a GitHub repository, and enable automatic deployments on ...",
+    "host_name": "vercel.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=jWUfqRkQ_2c",
+    "name": "How To Deploy GitHub Project on Vercel | Easy Guide 2026",
+    "snippet": "... your GitHub project on Vercel in just a few simple steps. Whether you're working with a React app or any other web project, you'll learn how ...",
+    "host_name": "www.youtube.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  }
+]

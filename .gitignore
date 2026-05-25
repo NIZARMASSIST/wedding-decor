@@ -1,0 +1,9 @@
+.vercel
+.env
+.env.local
+node_modules/
+.next/
+db/*.db
+db/*.db-journal
+.vercel
+*.log
