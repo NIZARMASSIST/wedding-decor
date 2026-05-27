@@ -95,10 +95,10 @@ export default function ChatSidebar({ isOpen, onClose, currentUser, language }: 
     }
   }, [])
 
-  // جلب الرسائل
-  const fetchMessages = useCallback(async (conversationId: string) => {
+  // جلب الرسائل - silent=true يعني تحديث بصمت بدون لودينق (للـ polling)
+  const fetchMessages = useCallback(async (conversationId: string, silent: boolean = false) => {
     try {
-      setLoadingMessages(true)
+      if (!silent) setLoadingMessages(true)
       const res = await fetch(`/api/chat/messages?conversationId=${conversationId}&limit=100`)
       if (res.ok) {
         const data = await res.json()
@@ -107,7 +107,7 @@ export default function ChatSidebar({ isOpen, onClose, currentUser, language }: 
     } catch (error) {
       console.error('Error fetching messages:', error)
     } finally {
-      setLoadingMessages(false)
+      if (!silent) setLoadingMessages(false)
     }
   }, [])
 
@@ -134,7 +134,7 @@ export default function ChatSidebar({ isOpen, onClose, currentUser, language }: 
     pollingRef.current = setInterval(() => {
       fetchConversations()
       if (activeConversation) {
-        fetchMessages(activeConversation.id)
+        fetchMessages(activeConversation.id, true) // silent=true - تحديث بصمت
       }
     }, 3000)
 
