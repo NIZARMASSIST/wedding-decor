@@ -20,7 +20,7 @@ import {
   Globe, Paperclip, Download, Eye, Play, CheckCircle2,
   FolderOpen, BarChart3, PieChart, LogOut, User, Upload,
   Search, Filter, Box, X, LayoutGrid, List, ImageIcon,
-  MapPin, UserCheck, ClipboardList, MessageCircle
+  MapPin, UserCheck, ClipboardList, MessageCircle, HelpCircle
 
 } from 'lucide-react'
 import MaterialsTab from '@/components/MaterialsTab'
@@ -1327,36 +1327,50 @@ export default function Home() {
                     <MessageCircle className="w-4 h-4" />
                     {language === 'ar' ? 'الدردشة' : 'Chat'}
                   </Button>
-                  {/* إشعارات */}
-                  {(currentUser.role === 'general_manager' || currentUser.role === 'executive_manager') && (
-                    <div className="relative">
-                      <Button variant="outline" size="sm" onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) fetchNotifications() }} className="gap-1 relative">
-                        🔔
-                        {unreadNotifications > 0 && (
-                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">{unreadNotifications}</span>
-                        )}
-                      </Button>
-                      {showNotifications && (
-                        <div className="absolute top-full mt-2 w-80 bg-white border rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto" style={{ left: 0 }}>
-                          <div className="flex justify-between items-center p-3 border-b">
-                            <h3 className="font-bold text-sm">{language === 'ar' ? 'الإشعارات' : 'Notifications'}</h3>
-                            <Button variant="ghost" size="sm" onClick={async () => { await fetch('/api/notifications', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'markAllRead'}) }); fetchNotifications() }}>
-                              {language === 'ar' ? 'قراءة الكل' : 'Mark all read'}
-                            </Button>
-                          </div>
-                          {notifications.length === 0 ? (
-                            <p className="p-4 text-center text-gray-400 text-sm">{language === 'ar' ? 'لا توجد إشعارات' : 'No notifications'}</p>
-                          ) : notifications.map(n => (
-                            <div key={n.id} className={`p-3 border-b hover:bg-gray-50 ${!n.isRead ? 'bg-blue-50' : ''}`}>
-                              <p className="font-medium text-sm">{n.title}</p>
-                              <p className="text-xs text-gray-500 mt-1">{n.message}</p>
-                              <p className="text-xs text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString(language === 'ar' ? 'ar-SA' : 'en-US')}</p>
+                  {/* إشعارات ومساعدة */}
+                  <div className="flex items-center gap-2">
+                    {/* زر المساعدة */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setHelpOpen(true)}
+                      className="gap-1 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white border-blue-600 hover:border-blue-700 shadow-md hover:shadow-lg transition-all duration-200"
+                      title={language === 'ar' ? 'مركز المساعدة - ابحث عن أي مشكلة وحلها' : 'Help Center - Search for any problem and solution'}
+                    >
+                      <HelpCircle className="w-4 h-4" />
+                      <span className="font-bold">?</span>
+                    </Button>
+                    {/* جرس الإشعارات */}
+                    {(currentUser.role === 'general_manager' || currentUser.role === 'executive_manager') && (
+                      <div className="relative">
+                        <Button variant="outline" size="sm" onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) fetchNotifications() }} className="gap-1 relative">
+                          🔔
+                          {unreadNotifications > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">{unreadNotifications}</span>
+                          )}
+                        </Button>
+                        {showNotifications && (
+                          <div className="absolute top-full mt-2 w-80 bg-white border rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto" style={{ left: 0 }}>
+                            <div className="flex justify-between items-center p-3 border-b">
+                              <h3 className="font-bold text-sm">{language === 'ar' ? 'الإشعارات' : 'Notifications'}</h3>
+                              <Button variant="ghost" size="sm" onClick={async () => { await fetch('/api/notifications', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'markAllRead'}) }); fetchNotifications() }}>
+                                {language === 'ar' ? 'قراءة الكل' : 'Mark all read'}
+                              </Button>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                            {notifications.length === 0 ? (
+                              <p className="p-4 text-center text-gray-400 text-sm">{language === 'ar' ? 'لا توجد إشعارات' : 'No notifications'}</p>
+                            ) : notifications.map(n => (
+                              <div key={n.id} className={`p-3 border-b hover:bg-gray-50 ${!n.isRead ? 'bg-blue-50' : ''}`}>
+                                <p className="font-medium text-sm">{n.title}</p>
+                                <p className="text-xs text-gray-500 mt-1">{n.message}</p>
+                                <p className="text-xs text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString(language === 'ar' ? 'ar-SA' : 'en-US')}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg text-sm">
                     <User className="w-4 h-4" />
                     <span className="font-medium">{currentUser.name}</span>
@@ -3634,17 +3648,7 @@ export default function Home() {
         language={language}
       />
 
-      {/* زر المساعدة العائم - علامة الاستفهام */}
-      {currentUser && (
-        <button
-          onClick={() => setHelpOpen(true)}
-          className="fixed bottom-8 z-50 w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white shadow-2xl hover:shadow-blue-500/40 transition-all duration-300 flex items-center justify-center group print:hidden animate-bounce"
-          style={{ [isRTL ? 'left' : 'right']: '1.5rem', animationIterationCount: '3', animationDuration: '1s' }}
-          title={language === 'ar' ? 'مركز المساعدة - ابحث عن أي مشكلة وحلها' : 'Help Center - Search for any problem and solution'}
-        >
-          <span className="text-3xl font-bold group-hover:scale-110 transition-transform duration-200" style={{ lineHeight: 1 }}>?</span>
-        </button>
-      )}
+
     </div>
   )
 }

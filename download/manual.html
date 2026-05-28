@@ -1,0 +1,1630 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>كتيب دليل المستخدم - نظام الوان الخليج</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Sans+Arabic:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 18mm 20mm 18mm;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'Noto Sans Arabic', 'Noto Sans SC', 'Inter', sans-serif;
+    background: #ffffff;
+    color: #1e293b;
+    line-height: 1.8;
+    font-size: 11pt;
+    direction: rtl;
+  }
+
+  /* ===== Cover Page ===== */
+  .cover-page {
+    page-break-after: always;
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+    color: #ffffff;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover-page::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 50%, rgba(218, 165, 32, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 50%, rgba(218, 165, 32, 0.05) 0%, transparent 40%);
+    z-index: 0;
+  }
+  .cover-page::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #daa520, #f0d060, #daa520);
+  }
+  .cover-content {
+    position: relative;
+    z-index: 1;
+    padding: 40px;
+  }
+  .cover-logo {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, #daa520, #f0d060);
+    border-radius: 20px;
+    margin: 0 auto 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    font-weight: 900;
+    color: #0f172a;
+  }
+  .cover-title {
+    font-size: 48px;
+    font-weight: 900;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+    color: #daa520;
+  }
+  .cover-subtitle {
+    font-size: 20px;
+    font-weight: 400;
+    margin-bottom: 30px;
+    opacity: 0.85;
+  }
+  .cover-type {
+    font-size: 14px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    opacity: 0.5;
+    margin-bottom: 40px;
+  }
+  .cover-desc {
+    max-width: 500px;
+    margin: 0 auto 50px;
+    font-size: 14px;
+    line-height: 1.8;
+    opacity: 0.7;
+  }
+  .cover-meta {
+    font-size: 13px;
+    opacity: 0.6;
+    margin-top: 20px;
+  }
+  .cover-version {
+    display: inline-block;
+    background: rgba(218, 165, 32, 0.2);
+    border: 1px solid rgba(218, 165, 32, 0.4);
+    padding: 4px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    margin-top: 15px;
+  }
+
+  /* ===== TOC Page ===== */
+  .toc-page {
+    page-break-after: always;
+    padding: 40px 0;
+  }
+  .toc-page h2 {
+    font-size: 28px;
+    font-weight: 800;
+    color: #0f172a;
+    border-bottom: 3px solid #daa520;
+    padding-bottom: 12px;
+    margin-bottom: 30px;
+  }
+  .toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .toc-list li {
+    padding: 10px 0;
+    border-bottom: 1px dotted #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .toc-list li .toc-num {
+    display: inline-block;
+    width: 35px;
+    height: 35px;
+    background: #0f172a;
+    color: #daa520;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 35px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-left: 12px;
+    flex-shrink: 0;
+  }
+  .toc-list li .toc-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    flex: 1;
+  }
+  .toc-list li .toc-page-num {
+    font-size: 13px;
+    color: #64748b;
+    margin-right: 10px;
+  }
+
+  /* ===== Content Pages ===== */
+  .section {
+    page-break-before: always;
+    padding: 0;
+  }
+  .section:first-of-type {
+    page-break-before: auto;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 15px;
+  }
+  .section-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #0f172a, #1e3a5f);
+    color: #daa520;
+    border-radius: 12px;
+    font-size: 20px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .subsection {
+    margin-top: 20px;
+    margin-bottom: 15px;
+  }
+  .subsection h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 8px;
+    padding-right: 12px;
+    border-right: 4px solid #daa520;
+  }
+
+  p {
+    margin-bottom: 12px;
+    text-align: justify;
+    line-height: 1.9;
+  }
+
+  /* ===== Images ===== */
+  .figure {
+    margin: 20px 0;
+    text-align: center;
+  }
+  .figure img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .figure-caption {
+    font-size: 10px;
+    color: #64748b;
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  /* ===== Steps ===== */
+  .steps {
+    margin: 15px 0;
+    padding: 0;
+  }
+  .step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border-right: 3px solid #daa520;
+  }
+  .step-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: #daa520;
+    color: #0f172a;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .step-text {
+    font-size: 11pt;
+    line-height: 1.7;
+    flex: 1;
+  }
+
+  /* ===== Info Boxes ===== */
+  .info-box {
+    background: #eff6ff;
+    border-right: 4px solid #3b82f6;
+    padding: 14px 18px;
+    border-radius: 0 8px 8px 0;
+    margin: 15px 0;
+    font-size: 11pt;
+    line-height: 1.7;
+  }
+  .info-box.warning {
+    background: #fffbeb;
+    border-right-color: #f59e0b;
+  }
+  .info-box.success {
+    background: #f0fdf4;
+    border-right-color: #22c55e;
+  }
+  .info-box-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+
+  /* ===== Tables ===== */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    font-size: 10.5pt;
+  }
+  .data-table th {
+    background: #0f172a;
+    color: #daa520;
+    padding: 10px 14px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 10pt;
+  }
+  .data-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: right;
+    vertical-align: top;
+  }
+  .data-table tr:nth-child(even) {
+    background: #f8fafc;
+  }
+  .data-table tr:hover {
+    background: #eff6ff;
+  }
+
+  /* ===== Badge ===== */
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 9pt;
+    font-weight: 600;
+  }
+  .badge-gold { background: #fef3c7; color: #92400e; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+
+  /* ===== Keyboard ===== */
+  kbd {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-family: 'Inter', monospace;
+    font-size: 10pt;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+
+  /* ===== Footer ===== */
+  .page-footer {
+    margin-top: 40px;
+    padding-top: 15px;
+    border-top: 1px solid #e2e8f0;
+    text-align: center;
+    font-size: 9px;
+    color: #94a3b8;
+  }
+
+  /* ===== Roles Table ===== */
+  .role-card {
+    display: flex;
+    gap: 15px;
+    padding: 14px;
+    background: #f8fafc;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    border: 1px solid #e2e8f0;
+  }
+  .role-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .role-content h4 {
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .role-content p {
+    margin: 0;
+    font-size: 10.5pt;
+    line-height: 1.6;
+  }
+
+  /* Two column layout for some sections */
+  .two-col {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .two-col > div {
+    flex: 1;
+    min-width: 250px;
+  }
+
+  /* Number callout */
+  .num-callout {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 0;
+  }
+  .num-callout .num {
+    font-size: 28px;
+    font-weight: 900;
+    color: #daa520;
+    line-height: 1;
+  }
+  .num-callout .num-label {
+    font-size: 11px;
+    color: #64748b;
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== COVER PAGE ========== -->
+<div class="cover-page">
+  <div class="cover-content">
+    <div class="cover-logo">AK</div>
+    <div class="cover-type">دليل المستخدم</div>
+    <div class="cover-title">الوان الخليج</div>
+    <div class="cover-subtitle">نظام إدارة تصنيع ديكور الأعراس</div>
+    <div class="cover-desc">
+      دليل شامل ومفصل لاستخدام نظام الوان الخليج لإدارة تصنيع ديكور الأعراس.
+      يغطي هذا الكتيب جميع الميزات والوظائف المتاحة مع شرح مصور خطوة بخطوة لكل مرحلة من مراحل الاستخدام.
+    </div>
+    <div class="cover-version">الإصدار 3.0</div>
+    <div class="cover-meta">
+      2026 | إدارة تقنية المعلومات
+    </div>
+  </div>
+</div>
+
+<!-- ========== TABLE OF CONTENTS ========== -->
+<div class="toc-page">
+  <h2>جدول المحتويات</h2>
+  <ul class="toc-list">
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">1</span><span class="toc-text">مقدمة عن النظام</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">2</span><span class="toc-text">تسجيل الدخول وإنشاء الحساب</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">3</span><span class="toc-text">لوحة التحكم الرئيسية</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">4</span><span class="toc-text">إدارة المشاريع</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">5</span><span class="toc-text">إدارة العناصر الإنتاجية</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">6</span><span class="toc-text">إدارة المراحل الإنتاجية</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">7</span><span class="toc-text">الجدول الزمني للإنتاج</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">8</span><span class="toc-text">الرسوم البيانية والإحصائيات</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">9</span><span class="toc-text">إدارة المواد الأولية</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">10</span><span class="toc-text">إدارة الأقسام</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">11</span><span class="toc-text">إدارة المستخدمين</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">12</span><span class="toc-text">نظام الدردشة والمحادثات</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">13</span><span class="toc-text">الإشعارات</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">14</span><span class="toc-text">التصدير والتقارير</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">15</span><span class="toc-text">أدوار المستخدمين وصلاحياتهم</span></span>
+    </li>
+    <li>
+      <span style="display:flex;align-items:center;"><span class="toc-num">16</span><span class="toc-text">الأسئلة الشائعة وحل المشكلات</span></span>
+    </li>
+  </ul>
+</div>
+
+<!-- ========== SECTION 1: Introduction ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">1</div>
+    <h2 class="section-title">مقدمة عن النظام</h2>
+  </div>
+
+  <p>
+    نظام <strong>الوان الخليج</strong> هو نظام متكامل لإدارة تصنيع ديكور الأعراس، مصمم خصيصاً لتلبية احتياجات شركات تصنيع الديكور في منطقة الخليج العربي. يوفر النظام حلاً شاملاً لإدارة دورة حياة التصنيع الكاملة بدءاً من إنشاء المشاريع وصولاً إلى التسليم النهائي، مع تتبع دقيق لكل مرحلة إنتاجية ومواد أولية مستخدمة.
+  </p>
+
+  <div class="subsection">
+    <h3>الهدف من النظام</h3>
+    <p>
+      يهدف النظام إلى رقمنة وأتمتة عمليات تصنيع ديكور الأعراس التي كانت تُدار تقليدياً بالطرق اليدوية والورقية. من خلال توفير منصة مركزية، يمكن لجميع الأقسام والإدارات العمل بشكل متكامل وتنسيق، مما يقلل من الأخطاء البشرية ويزيد من كفاءة الإنتاج. كما يوفر النظام رؤية شاملة وواضحة لحالة كل مشروع في أي لحظة، مما يُمكن الإدارة من اتخاذ قرارات مستنيرة بناءً على بيانات دقيقة ومحدثة.
+    </p>
+  </div>
+
+  <div class="subsection">
+    <h3>الميزات الرئيسية</h3>
+    <div class="two-col">
+      <div>
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text"><strong>إدارة المشاريع:</strong> إنشاء وتتبع مشاريع ديكور الأعراس من البداية حتى التسليم مع تحديد المواعيد والمسؤولين</div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text"><strong>إدارة المراحل:</strong> تقسيم كل عنصر إنتاجي إلى مراحل حسب القسم مع تتبع التقدم والجدولة</div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text"><strong>إدارة المواد:</strong> تتبع المخزون والمواد المستخدمة مع إمكانية الاستيراد والتصدير من إكسل</div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-text"><strong>الرسوم البيانية:</strong> لوحات تحكم بيانية شاملة لتحليل الإنتاج وأعباء العمل</div>
+        </div>
+      </div>
+      <div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-text"><strong>نظام الدردشة:</strong> تواصل فوري بين أعضاء الفريق عبر محادثات مباشرة وجماعية</div>
+        </div>
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-text"><strong>الإشعارات:</strong> تنبيهات فورية للمدراء عند تعديل المشرفين على المشاريع</div>
+        </div>
+        <div class="step">
+          <div class="step-num">7</div>
+          <div class="step-text"><strong>التصدير:</strong> تصدير التقارير بصيغ إكسل وPDF مع رسوم بيانية مدمجة</div>
+        </div>
+        <div class="step">
+          <div class="step-num">8</div>
+          <div class="step-text"><strong>دعم ثنائي اللغة:</strong> واجهة عربية وإنجليزية مع تبديل فوري بين اللغتين</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>المتطلبات التقنية</h3>
+    <p>
+      يعمل النظام عبر متصفح الويب ولا يحتاج إلى تثبيت أي برامج إضافية. يمكن الوصول إليه من أي جهاز كمبيوتر أو جهاز لوحي أو هاتف ذكي متصل بالإنترنت. يوصى باستخدام متصفحات حديثة مثل Google Chrome أو Microsoft Edge أو Safari للحصول على أفضل أداء وتوافق. النظام يدعم اتصالات الإنترنت العادية ولا يتطلب سرعات عالية للعمل بشكل طبيعي.
+    </p>
+  </div>
+</div>
+
+<!-- ========== SECTION 2: Login ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">2</div>
+    <h2 class="section-title">تسجيل الدخول وإنشاء الحساب</h2>
+  </div>
+
+  <div class="figure">
+    <img src="manual-images/login-page.png" alt="شاشة تسجيل الدخول">
+    <div class="figure-caption">شكل 1: شاشة تسجيل الدخول الرئيسية</div>
+  </div>
+
+  <div class="subsection">
+    <h3>تسجيل الدخول</h3>
+    <p>
+      للوصول إلى النظام، يجب على المستخدم تسجيل الدخول باستخدام بيانات الاعتماد المخصصة له. تظهر شاشة تسجيل الدخول تلقائياً عند فتح التطبيق إذا لم تكن قد سجلت دخولك مسبقاً. تتضمن شاشة تسجيل الدخول حقول لإدخال البريد الإلكتروني وكلمة المرور، بالإضافة إلى زر لتسجيل الدخول ورابط لإنشاء حساب جديد إذا كنت مستخدماً جديداً.
+    </p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">افتح متصفح الويب وانتقل إلى عنوان التطبيق الإلكتروني</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">أدخل بريدك الإلكتروني المسجل في حقل البريد الإلكتروني</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">أدخل كلمة المرور الخاصة بك في حقل كلمة المرور</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">اضغط على زر <strong>تسجيل الدخول</strong> للدخول إلى لوحة التحكم</div>
+      </div>
+    </div>
+    <div class="info-box warning">
+      <div class="info-box-title">تنبيه مهم</div>
+      إذا أدخلت بيانات خاطئة ثلاث مرات متتالية، يُنصح بالتحقق من بيانات الاعتماد أو التواصل مع المدير العام لإعادة تعيين كلمة المرور.
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>إنشاء حساب جديد</h3>
+    <p>
+      يمكن للمستخدمين الجدد إنشاء حساب عن طريق النقر على رابط "إنشاء حساب جديد" الموجود في شاشة تسجيل الدخول. سيتم توجيهك إلى نموذج التسجيل حيث يجب ملء البيانات المطلوبة. يرجى ملاحظة أن الحسابات الجديدة تُنشأ بصلاحية "مشرف" افتراضياً وبحالة "قيد المراجعة" حتى يقوم المدير العام بتفعيلها ومنح الدور المناسب.
+    </p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">من شاشة تسجيل الدخول، اضغط على <strong>إنشاء حساب جديد</strong></div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">أدخل الاسم الكامل والبريد الإلكتروني ورقم الهاتف وكلمة المرور</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">اضغط على <strong>تسجيل</strong> لإنشاء الحساب</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">انتظر موافقة المدير العام على حسابك وتفعيله قبل التمكن من استخدام النظام</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>تسجيل الخروج</h3>
+    <p>
+      لتسجيل الخروج من النظام، اضغط على زر <strong>تسجيل الخروج</strong> الموجود في الرأسية العلوية بجانب اسم المستخدم. سيتم تسجيل خروجك فوراً وإعادتك إلى شاشة تسجيل الدخول. من المهم تسجيل الخروج عند الانتهاء من العمل، خاصة عند استخدام أجهزة مشتركة، لحماية بياناتك وسلامة النظام.
+    </p>
+  </div>
+</div>
+
+<!-- ========== SECTION 3: Dashboard ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">3</div>
+    <h2 class="section-title">لوحة التحكم الرئيسية</h2>
+  </div>
+
+  <div class="figure">
+    <img src="manual-images/dashboard.png" alt="لوحة التحكم الرئيسية">
+    <div class="figure-caption">شكل 2: لوحة التحكم الرئيسية للنظام</div>
+  </div>
+
+  <p>
+    لوحة التحكم الرئيسية هي نقطة البداية لجميع عمليات النظام. تتميز بتصميم علامات تبويب يتيح الوصول السريع إلى جميع الأقسام والوظائف من مكان واحد. تتكون الرأسية العلوية من شعار النظام واسمه مع رقم الإصدار، ومحول اللغة، وأزرار التصدير، وزر الدردشة، والإشعارات، ومعلومات المستخدم الحالي.
+  </p>
+
+  <div class="subsection">
+    <h3>مكونات الرأسية العلوية</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>العنصر</th>
+          <th>الوصف</th>
+          <th>الوظيفة</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>الشعار واسم النظام</td>
+          <td>الوان الخليج v3.0</td>
+          <td>تعريف هوية النظام</td>
+        </tr>
+        <tr>
+          <td>محول اللغة</td>
+          <td>عربي / English</td>
+          <td>التبديل بين العربية والإنجليزية</td>
+        </tr>
+        <tr>
+          <td>تصدير إكسل</td>
+          <td>زر التصدير</td>
+          <td>تصدير البيانات بصيغة Excel</td>
+        </tr>
+        <tr>
+          <td>تصدير PDF</td>
+          <td>زر التصدير</td>
+          <td>تصدير التقارير بصيغة PDF</td>
+        </tr>
+        <tr>
+          <td>طباعة A3</td>
+          <td>زر الطباعة</td>
+          <td>طباعة التقارير بحجم A3</td>
+        </tr>
+        <tr>
+          <td>الدردشة</td>
+          <td>أيقونة المحادثة</td>
+          <td>فتح لوحة الدردشة الجانبية</td>
+        </tr>
+        <tr>
+          <td>الإشعارات</td>
+          <td>أيقونة الجرس</td>
+          <td>عرض الإشعارات الواردة (للمدراء فقط)</td>
+        </tr>
+        <tr>
+          <td>المستخدم</td>
+          <td>الاسم والدور</td>
+          <td>عرض معلومات المستخدم الحالي</td>
+        </tr>
+        <tr>
+          <td>تسجيل الخروج</td>
+          <td>زر الخروج</td>
+          <td>تسجيل الخروج من النظام</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="subsection">
+    <h3>علامات التبويب الرئيسية</h3>
+    <p>
+      تنقسم لوحة التحكم إلى ثماني علامات تبويب رئيسية، كل منها يوفر وصولاً إلى قسم مختلف من النظام. يمكن التنقل بينها بسهولة عبر النقر على اسم التبويب في الشريط العلوي. تعتمد علامات التبويب المتاحة على دور المستخدم وصلاحياته.
+    </p>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>التبويب</th>
+          <th>الأيقونة</th>
+          <th>الوصف</th>
+          <th>متاح لـ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>المشاريع</td><td>📁</td><td>إدارة مشاريع الديكور</td><td>جميع المستخدمين</td></tr>
+        <tr><td>المواد الأولية</td><td>📦</td><td>إدارة المخزون والمواد</td><td>المدير وأمين المستودع</td></tr>
+        <tr><td>العناصر</td><td>📦</td><td>إدارة العناصر الإنتاجية</td><td>جميع المستخدمين</td></tr>
+        <tr><td>المراحل</td><td>⚙️</td><td>إدارة مراحل الإنتاج</td><td>جميع المستخدمين</td></tr>
+        <tr><td>الجدول الزمني</td><td>📅</td><td>الجدول الزمني للإنتاج</td><td>جميع المستخدمين</td></tr>
+        <tr><td>الرسوم البيانية</td><td>📊</td><td>الإحصائيات والتحليلات</td><td>جميع المستخدمين</td></tr>
+        <tr><td>الأقسام</td><td>👥</td><td>إدارة أقسام الإنتاج</td><td>المدير العام</td></tr>
+        <tr><td>المستخدمين</td><td>👤</td><td>إدارة حسابات المستخدمين</td><td>المدير العام فقط</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========== SECTION 4: Projects ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">4</div>
+    <h2 class="section-title">إدارة المشاريع</h2>
+  </div>
+
+  <div class="figure">
+    <img src="manual-images/projects.png" alt="إدارة المشاريع">
+    <div class="figure-caption">شكل 3: واجهة إدارة المشاريع</div>
+  </div>
+
+  <p>
+    يُعد قسم إدارة المشاريع القلب النابض للنظام، حيث يتم إنشاء وتتبع جميع مشاريع ديكور الأعراس. يوفر هذا القسم واجهة شاملة لإدارة تفاصيل كل مشروع بما في ذلك المعلومات الأساسية والمواعيد والمسؤولين والحالة الحالية. يمكن للمستخدمين إنشاء مشاريع جديدة وتعديلها ومتابعة تقدمها بسهولة.
+  </p>
+
+  <div class="subsection">
+    <h3>إنشاء مشروع جديد</h3>
+    <p>
+      لإنشاء مشروع جديد، اضغط على زر "مشروع جديد" في تبويب المشاريع. ستظهر نافذة تحتوي على حقول متعددة يجب ملؤها بمعلومات المشروع. يرجى التأكد من إدخال البيانات بدقة لأنها ستؤثر على الجدولة والتقارير.
+    </p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">انتقل إلى تبويب <strong>المشاريع</strong> من الشريط العلوي</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">اضغط على زر <strong>مشروع جديد</strong> لفتح نموذج الإنشاء</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">أدخل اسم المشروع بالعربية والإنجليزية، وتاريخ المشروع، والموقع، واسم المستلم</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">حدد المدير التنفيذي المسؤول واسم العميل وأضف وصفاً للمشروع</div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-text">حدد تاريخ البدء وتاريخ الانتهاء والموعد النهائي للتسليم</div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-text">ارفع صورة المشروع (اختياري) وأضف أي ملاحظات إضافية</div>
+      </div>
+      <div class="step">
+        <div class="step-num">7</div>
+        <div class="step-text">اضغط على <strong>حفظ</strong> لإنشاء المشروع</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>تفاصيل المشروع</h3>
+    <p>
+      يحتوي كل مشروع على مجموعة من المعلومات التفصيلية التي يمكن عرضها وتعديلها. تشمل هذه المعلومات: الاسم ثنائي اللغة، والتاريخ والموقع، وبيانات المستلم والعميل، والمدير التنفيذي المسؤول، والحالة الحالية، والتواريخ المهمة، والصورة والملاحظات. كما يعرض النظام معلومات منشئ المشروع وتاريخ الإنشاء.
+    </p>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>الحقل</th>
+          <th>النوع</th>
+          <th>مطلوب</th>
+          <th>الوصف</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>اسم المشروع (عربي)</td><td>نص</td><td>نعم</td><td>اسم المشروع باللغة العربية</td></tr>
+        <tr><td>اسم المشروع (إنجليزي)</td><td>نص</td><td>نعم</td><td>اسم المشروع باللغة الإنجليزية</td></tr>
+        <tr><td>تاريخ المشروع</td><td>تاريخ</td><td>نعم</td><td>تاريخ مناسبة العرس</td></tr>
+        <tr><td>الموقع</td><td>نص</td><td>لا</td><td>موقع إقامة الحفل</td></tr>
+        <tr><td>المستلم</td><td>نص</td><td>لا</td><td>اسم الشخص المستلم للديكور</td></tr>
+        <tr><td>المدير التنفيذي</td><td>اختيار</td><td>لا</td><td>المدير المسؤول عن المشروع</td></tr>
+        <tr><td>اسم العميل</td><td>نص</td><td>لا</td><td>اسم العميل طالب الخدمة</td></tr>
+        <tr><td>الحالة</td><td>اختيار</td><td>نعم</td><td>قيد التنفيذ / مكتمل / ملغى</td></tr>
+        <tr><td>تاريخ البدء</td><td>تاريخ</td><td>لا</td><td>تاريخ بدء العمل فعلياً</td></tr>
+        <tr><td>تاريخ الانتهاء</td><td>تاريخ</td><td>لا</td><td>تاريخ الانتهاء المتوقع</td></tr>
+        <tr><td>الموعد النهائي</td><td>تاريخ</td><td>لا</td><td>الموعد النهائي للتسليم</td></tr>
+        <tr><td>الصورة</td><td>ملف</td><td>لا</td><td>صورة توضيحية للمشروع</td></tr>
+        <tr><td>ملاحظات</td><td>نص طويل</td><td>لا</td><td>ملاحظات إضافية عن المشروع</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="subsection">
+    <h3>تعديل وحذف المشاريع</h3>
+    <p>
+      يمكن تعديل بيانات المشروع بالضغط على زر التعديل بجانب المشروع. عند قيام المشرف بتعديل مشروع، يتم تسجيل جميع التغييرات تلقائياً في سجل التغييرات وإرسال إشعار للمدراء المعنيين. هذا يضمن الشفافية والمتابعة الدقيقة لأي تعديلات تطرأ على المشاريع. أما حذف المشاريع فهو متاح فقط للمدير العام والمدير التنفيذي المسؤول عن المشروع.
+    </p>
+    <div class="info-box">
+      <div class="info-box-title">معلومة</div>
+      عندما يقوم المشرف بتعديل مشروع، يتلقى المدير العام والمدير التنفيذي إشعاراً تلقائياً يوضح التغييرات التي تمت. كما يتم تسجيل كل تغيير في سجل التغييرات للرجوع إليه لاحقاً.
+    </div>
+  </div>
+</div>
+
+<!-- ========== SECTION 5: Items ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">5</div>
+    <h2 class="section-title">إدارة العناصر الإنتاجية</h2>
+  </div>
+
+  <div class="figure">
+    <img src="manual-images/items.png" alt="إدارة العناصر الإنتاجية">
+    <div class="figure-caption">شكل 4: واجهة إدارة العناصر الإنتاجية</div>
+  </div>
+
+  <p>
+    العناصر الإنتاجية هي الوحدات الأساسية التي يتم تصنيعها ضمن كل مشروع. يمكن أن يكون العنصر أي قطعة ديكور مثل منصة العرس، أو جدار خلفي، أو قوس زهور، أو طاولة كيك، وغيرها. يتم ربط كل عنصر بمشروع محدد ويمكن تقسيمه إلى مراحل إنتاجية متعددة حسب القسم المسؤول عن التنفيذ.
+  </p>
+
+  <div class="subsection">
+    <h3>إنشاء عنصر إنتاجي جديد</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">اختر المشروع المطلوب من تبويب المشاريع</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">انتقل إلى تبويب <strong>العناصر</strong></div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">اضغط على <strong>عنصر جديد</strong> وأدخل اسم العنصر</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">حدد الأولوية (عالية/متوسطة/منخفضة) والكمية الإجمالية</div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-text">أضف ملاحظات وحدد الموعد النهائي للعنصر</div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-text">ارفع صورة توضيحية للعنصر واضغط <strong>حفظ</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>معلومات العنصر الإنتاجي</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>الحقل</th>
+          <th>الوصف</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>اسم العنصر</td><td>الاسم التعريفي للعنصر الإنتاجي مثل "منصة العرس الرئيسية"</td></tr>
+        <tr><td>الصورة</td><td>صورة توضيحية للعنصر المراد تصنيعه</td></tr>
+        <tr><td>الأولوية</td><td>مستوى الأولوية: عالية أو متوسطة أو منخفضة</td></tr>
+        <tr><td>الكمية الإجمالية</td><td>العدد المطلوب تصنيعه من هذا العنصر</td></tr>
+        <tr><td>الموعد النهائي</td><td>التاريخ المحدد لإنهاء تصنيع العنصر</td></tr>
+        <tr><td>الحالة</td><td>قيد الانتظار / قيد التنفيذ / مكتمل</td></tr>
+        <tr><td>ملاحظات</td><td>أي ملاحظات أو تعليمات خاصة بالعنصر</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="info-box success">
+    <div class="info-box-title">نصيحة</div>
+    يُنصح بإضافة صور توضيحية لكل عنصر إنتاجي لتسهيل فهم التصميم المطلوب على العمال في مختلف الأقسام. الصور تقلل من سوء الفهم والأخطاء في التنفيذ.
+  </div>
+</div>
+
+<!-- ========== SECTION 6: Stages ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">6</div>
+    <h2 class="section-title">إدارة المراحل الإنتاجية</h2>
+  </div>
+
+  <div class="figure">
+    <img src="manual-images/stages.png" alt="إدارة المراحل الإنتاجية">
+    <div class="figure-caption">شكل 5: واجهة إدارة المراحل الإنتاجية</div>
+  </div>
+
+  <p>
+    المراحل الإنتاجية هي الخطوات المتسلسلة التي يمر بها كل عنصر إنتاجي خلال عملية التصنيع. يتم ربط كل مرحلة بقسم محدد من أقسام المصنع (مثل قسم التصميم، أو قسم CNC، أو قسم النجارة، إلخ). يحدد تسلسل المراحل الترتيب الذي يتم به تنفيذ العمل، حيث تبدأ المرحلة التالية بعد اكتمال المرحلة السابقة أو جاهزيتها.
+  </p>
+
+  <div class="subsection">
+    <h3>إنشاء مرحلة إنتاجية</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">اختر العنصر الإنتاجي المراد إضافة مرحلة إليه</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">انتقل إلى تبويب <strong>المراحل</strong> واضغط على <strong>مرحلة جديدة</strong></div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">حدد القسم المسؤول عن المرحلة ورقم ترتيب المرحلة</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">أدخل الوقت المقدر لكل وحدة والكمية المطلوبة في هذه المرحلة</div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-text">حدد عدد الورديات (1 أو 2) وأوقات بداية ونهاية كل وردية</div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-text">اضغط <strong>حفظ</strong> لإنشاء المرحلة</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>تحديث حالة المرحلة</h3>
+    <p>
+      تمر المرحلة الإنتاجية بثلاث حالات رئيسية: <span class="badge badge-gray">قيد الانتظار</span> و<span class="badge badge-blue">قيد التنفيذ</span> و<span class="badge badge-green">مكتمل</span>. عند تغيير الحالة إلى "قيد التنفيذ"، يتم تسجيل تاريخ البدء تلقائياً. وعند تغييرها إلى "مكتمل"، يتم تسجيل تاريخ الانتهاء وتاريخ جاهزية المرحلة التالية تلقائياً.
+    </p>
+  </div>
+
+  <div class="subsection">
+    <h3>المرفقات وقوائم التحقق</h3>
+    <p>
+      كل مرحلة إنتاجية تدعم إضافة مرفقات (صور أعمال أو ملفات PDF) وقوائم تحقق لتتبع الكميات المنجزة. يمكن رفع صور العمل أثناء التنفيذ وصور الإنجاز عند الاكتمال. كما يمكن إنشاء بنود في قائمة التحقق لكل عنصر فرعي مع تحديد الكمية المطلوبة والمكتملة، ويتم تسجيل من أنجز البند ومتى.
+    </p>
+  </div>
+</div>
+
+<!-- ========== SECTION 7: Schedule ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">7</div>
+    <h2 class="section-title">الجدول الزمني للإنتاج</h2>
+  </div>
+
+  <div class="figure">
+    <img src="manual-images/schedule.png" alt="الجدول الزمني">
+    <div class="figure-caption">شكل 6: الجدول الزمني للإنتاج</div>
+  </div>
+
+  <p>
+    يوفر تبويب الجدول الزمني عرضاً شاملاً لجميع مراحل الإنتاج مرتبة زمنياً. يتم إنشاء الجدول تلقائياً بناءً على بيانات المراحل الإنتاجية من كل مشروع، مع حساب المدد الزمنية المتوقعة بناءً على الوقت المقدر لكل وحدة والكمية وإعدادات الورديات. يساعد هذا العرض الإدارة في التخطيط الفعال وتحديد الاختناقات وتوزيع الموارد بشكل أمثل.
+  </p>
+
+  <div class="subsection">
+    <h3>كيفية قراءة الجدول الزمني</h3>
+    <p>
+      يعرض الجدول الزمني كل مرحلة على حدة مع معلومات المشروع والعنصر المرتبط بها، والقسم المسؤول، والتواريخ المتوقعة للبدء والانتهاء، والحالة الحالية. يتم ترتيب المراحل حسب تاريخ البدء المتوقع من الأقدم إلى الأحدث. كما يُظهر الجدول معلومات الورديات لكل مرحلة، مما يسهل فهم توزيع العمل على مدار اليوم.
+    </p>
+  </div>
+
+  <div class="subsection">
+    <h3>حساب المدد الزمنية</h3>
+    <p>
+      يتم حساب المدة الزمنية لكل مرحلة تلقائياً بناءً على عدة عوامل: الوقت المقدر لكل وحدة إنتاجية، الكمية المطلوبة في المرحلة، وعدد الورديات وساعات العمل في كل وردية. على سبيل المثال، إذا كان الوقت المقدر لكل وحدة ساعتان والكمية المطلوبة 10 وحدات مع وردية واحدة مدتها 8 ساعات، فإن المدة المتوقعة هي يومان ونصف تقريباً.
+    </p>
+  </div>
+</div>
+
+<!-- ========== SECTION 8: Charts ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">8</div>
+    <h2 class="section-title">الرسوم البيانية والإحصائيات</h2>
+  </div>
+
+  <div class="figure">
+    <img src="manual-images/charts.png" alt="الرسوم البيانية">
+    <div class="figure-caption">شكل 7: الرسوم البيانية والإحصائيات</div>
+  </div>
+
+  <p>
+    يقدم تبويب الرسوم البيانية لوحة تحكم بصرية شاملة تعرض تحليلات متنوعة لأداء الإنتاج وحالة المشاريع وأعباء العمل على الأقسام. تساعد هذه الرسوم البيانية الإدارة في اتخاذ قرارات مبنية على البيانات وتحديد الاتجاهات والأنماط في عمليات الإنتاج.
+  </p>
+
+  <div class="subsection">
+    <h3>أنواع الرسوم البيانية المتاحة</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>نوع الرسم</th>
+          <th>الوصف</th>
+          <th>الفائدة</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>رسم أعمدة</td>
+          <td>عرض تقدم المشاريع عبر المراحل المختلفة</td>
+          <td>مقارنة التقدم بين المشاريع</td>
+        </tr>
+        <tr>
+          <td>رسم دائري</td>
+          <td>توزيع حالات المشاريع (قيد التنفيذ / مكتمل / ملغى)</td>
+          <td>فهم النسب المئوية للحالات</td>
+        </tr>
+        <tr>
+          <td>رسم مساحي</td>
+          <td>أعباء العمل على الأقسام المختلفة عبر الزمن</td>
+          <td>تحديد الاختناقات والفترات المزدحمة</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="subsection">
+    <h3>استخدام الرسوم البيانية</h3>
+    <p>
+      تتفاعل الرسوم البيانية بشكل ديناميكي مع بيانات النظام، حيث يتم تحديثها تلقائياً عند أي تغيير في المشاريع أو المراحل. يمكنك تمرير الماوس فوق أي عنصر في الرسم البياني لعرض التفاصيل الدقيقة. كما يمكن تصفية البيانات حسب المشروع أو القسم أو الفترة الزمنية للحصول على رؤية أكثر تركيزاً.
+    </p>
+  </div>
+</div>
+
+<!-- ========== SECTION 9: Materials ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">9</div>
+    <h2 class="section-title">إدارة المواد الأولية</h2>
+  </div>
+
+  <div class="figure">
+    <img src="manual-images/materials.png" alt="إدارة المواد الأولية">
+    <div class="figure-caption">شكل 8: واجهة إدارة المواد الأولية</div>
+  </div>
+
+  <p>
+    يُعد قسم إدارة المواد الأولية أداة أساسية لتتبع المخزون والمواد المستخدمة في عمليات التصنيع. يدعم النظام نوعين من المواد: المواد الخام (مثل الخشب والقماش والطلاء) والمواد التشغيلية (مثل المسامير والغراء والمواد الاستهلاكية). كما يوفر إمكانية ربط المواد بالمشاريع وتتبع الاستهلاك الفعلي.
+  </p>
+
+  <div class="subsection">
+    <h3>إضافة مادة جديدة</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">انتقل إلى تبويب <strong>المواد الأولية</strong></div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">اضغط على <strong>مادة جديدة</strong> لفتح نموذج الإضافة</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">أدخل اسم المادة بالعربية والإنجليزية، وحدد الوحدة (متر/كيلو/قطعة/لفة/صندوق/لتر)</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">اختر الفئة (خشب/قماش/طلاء/إلكترونيات/زهور/أخرى) ونوع المادة (خام/تشغيلية)</div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-text">حدد سعر الوحدة والكمية المتوفرة في المخزون</div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-text">اضغط <strong>حفظ</strong> لإضافة المادة إلى قاعدة البيانات</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>استيراد وتصدير المواد</h3>
+    <p>
+      يوفر النظام إمكانية استيراد المواد من ملفات إكسل وتصديرها أيضاً بصيغة إكسل. ميزة الاستيراد مفيدة عند إضافة كميات كبيرة من المواد دفعة واحدة، حيث يمكن تحضير البيانات في ملف إكسل ورفعها مباشرة. ميزة التصدير مفيدة لإعداد تقارير المخزون أو نقل البيانات إلى أنظمة أخرى. لاستيراد المواد، اضغط على زر "استيراد" واختر ملف الإكسل المناسب. للتصدير، اضغط على زر "تصدير" وسيتم تنزيل الملف تلقائياً.
+    </p>
+  </div>
+
+  <div class="subsection">
+    <h3>ربط المواد بالمشاريع</h3>
+    <p>
+      يمكن ربط المواد بالمشاريع لتحديد الكميات المطلوبة لكل مشروع. يتم ذلك من خلال قسم "مواد المشروع" حيث يمكن إضافة مادة موجودة في المخزون وتحديد الكمية المطلوبة. كما يمكن تتبع المواد المستهلكة فعلياً من خلال قسم "المواد المستخدمة" الذي يتوفر فقط لأمين المستودع. هذا يضمن دقة حسابات المخزون وتكاليف المشاريع.
+    </p>
+  </div>
+
+  <div class="info-box">
+    <div class="info-box-title">صلاحيات المواد</div>
+    إضافة وتعديل وحذف المواد متاحة للمدير العام وأمين المستودع فقط. إضافة المواد المستخدمة للمشاريع متاحة لأمين المستودع فقط. عرض المواد متاح لجميع المستخدمين.
+  </div>
+</div>
+
+<!-- ========== SECTION 10: Departments ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">10</div>
+    <h2 class="section-title">إدارة الأقسام</h2>
+  </div>
+
+  <div class="figure">
+    <img src="manual-images/departments.png" alt="إدارة الأقسام">
+    <div class="figure-caption">شكل 9: واجهة إدارة الأقسام</div>
+  </div>
+
+  <p>
+    يوفر تبويب الأقسام إدارة شاملة لأقسام الإنتاج في المصنع. يتم إنشاء عشرة أقسام افتراضية تلقائياً عند إعداد النظام، ويمكن للمدير العام إضافة أقسام جديدة أو تعديل الأقسام الموجودة حسب احتياجات العمل. لكل قسم لون وأيقونة مميزة لتسهيل التعرف عليه في الجداول والرسوم البيانية.
+  </p>
+
+  <div class="subsection">
+    <h3>الأقسام الافتراضية</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>القسم</th>
+          <th>الاسم بالإنجليزية</th>
+          <th>الوصف</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>التصميم</td><td>Design</td><td>تصميم الديكور وإعداد المخططات</td></tr>
+        <tr><td>CNC</td><td>CNC</td><td>القطع والنحت بآلات CNC</td></tr>
+        <tr><td>النجارة</td><td>Carpentry</td><td>أعمال الخشب والنجارة</td></tr>
+        <tr><td>الحدادة</td><td>Blacksmith</td><td>أعمال الحديد والمعادن</td></tr>
+        <tr><td>الخياطة</td><td>Sewing</td><td>أعمال القماش والخياطة</td></tr>
+        <tr><td>الدهان</td><td>Painting</td><td>أعمال الدهان والتشطيب</td></tr>
+        <tr><td>الفوم</td><td>Foam</td><td>أعمال الفوم والنحت الحراري</td></tr>
+        <tr><td>التجميع</td><td>Assembly</td><td>تجميع القطع والتركيب النهائي</td></tr>
+        <tr><td>الطباعة الرقمية</td><td>Digital Print</td><td>الطباعة على مختلف المواد</td></tr>
+        <tr><td>أخرى</td><td>Other</td><td>أي أعمال إضافية لا تندرج تحت الأقسام السابقة</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="subsection">
+    <h3>إدارة الأقسام</h3>
+    <p>
+      يمكن للمدير العام إضافة أقسام جديدة وتعديل أسماء وألوان وأيقونات الأقسام الموجودة. عند تعديل قسم، يتم تحديث جميع المراحل الإنتاجية المرتبطة به تلقائياً. لا يمكن حذف قسم مرتبط بمراحل إنتاجية قائمة؛ يجب أولاً إلغاء الارتباط أو نقل المراحل إلى قسم آخر. كل قسم له لون مميز يظهر في الجدول الزمني والرسوم البيانية لتسهيل التمييز البصري.
+    </p>
+  </div>
+</div>
+
+<!-- ========== SECTION 11: Users ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">11</div>
+    <h2 class="section-title">إدارة المستخدمين</h2>
+  </div>
+
+  <div class="figure">
+    <img src="manual-images/users.png" alt="إدارة المستخدمين">
+    <div class="figure-caption">شكل 10: واجهة إدارة المستخدمين</div>
+  </div>
+
+  <p>
+    تبويب المستخدمين متاح حصرياً للمدير العام، ويتيح له إدارة حسابات جميع مستخدمي النظام. يشمل ذلك عرض قائمة المستخدمين، وتعديل أدوارهم وحالاتهم، وحذف الحسابات غير المرغوبة. كما يمكن للمدير تفعيل الحسابات الجديدة التي أنشأها المستخدمون بأنفسهم وتكون بحالة "قيد المراجعة" مبدئياً.
+  </p>
+
+  <div class="subsection">
+    <h3>إدارة حسابات المستخدمين</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">انتقل إلى تبويب <strong>المستخدمين</strong> (متاح للمدير العام فقط)</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">عرض قائمة المستخدمين مع بياناتهم وأدوارهم وحالاتهم</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">لتعديل دور مستخدم، اضغط على زر التعديل واختر الدور الجديد</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">لتغيير حالة مستخدم (تفعيل/تعليق)، اضغط على زر التعديل واختر الحالة المناسبة</div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-text">لحذف مستخدم، اضغط على زر الحذف مع التأكيد</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>حالات المستخدمين</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>الحالة</th>
+          <th>الوصف</th>
+          <th>الصلاحية</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-green">نشط</span></td>
+          <td>حساب مُفعّل ويمكنه تسجيل الدخول واستخدام النظام</td>
+          <td>كاملة حسب الدور</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-gold">قيد المراجعة</span></td>
+          <td>حساب جديد ينتظر موافقة المدير العام</td>
+          <td>لا يمكنه الدخول</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">معلق</span></td>
+          <td>حساب موقوف مؤقتاً بقرار من المدير العام</td>
+          <td>لا يمكنه الدخول</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="info-box warning">
+    <div class="info-box-title">تنبيه مهم</div>
+    لا يمكن حذف حساب المدير العام أو تغيير دوره. كما لا يمكن تعيين أكثر من مدير عام واحد في النظام. عند محاولة حذف مستخدم، تأكد من نقل مسؤولياته إلى مستخدم آخر أولاً.
+  </div>
+</div>
+
+<!-- ========== SECTION 12: Chat ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">12</div>
+    <h2 class="section-title">نظام الدردشة والمحادثات</h2>
+  </div>
+
+  <div class="figure">
+    <img src="manual-images/chat.png" alt="نظام الدردشة">
+    <div class="figure-caption">شكل 11: واجهة نظام الدردشة</div>
+  </div>
+
+  <p>
+    يوفر النظام نظام دردشة متكامل يتيح التواصل الفوري بين أعضاء الفريق. يدعم النظام ثلاثة أنواع من المحادثات: المحادثات المباشرة بين شخصين، والمحادثات الجماعية، وقنوات البث. يمكن إرسال الرسائل النصية والصور والملفات مع إيصالات القراءة التي تُظهر من قرأ الرسالة ومتى.
+  </p>
+
+  <div class="subsection">
+    <h3>أنواع المحادثات</h3>
+    <div class="two-col">
+      <div>
+        <div class="role-card">
+          <div class="role-icon" style="background:#dbeafe;color:#1e40af;">👤</div>
+          <div class="role-content">
+            <h4>محادثة مباشرة</h4>
+            <p>محادثة خاصة بين شخصين. يتم إنشاؤها تلقائياً عند بدء محادثة مع مستخدم آخر لأول مرة.</p>
+          </div>
+        </div>
+        <div class="role-card">
+          <div class="role-icon" style="background:#dcfce7;color:#166534;">👥</div>
+          <div class="role-content">
+            <h4>محادثة جماعية</h4>
+            <p>محادثة تضم عدة أشخاص باسم محدد. يمكن إنشاؤها من قبل أي مستخدم ودعوة آخرين للانضمام.</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="role-card">
+          <div class="role-icon" style="background:#fef3c7;color:#92400e;">📢</div>
+          <div class="role-content">
+            <h4>قناة بث</h4>
+            <p>قناة إعلانية يمكن للمدير إنشاؤها لإرسال إعلانات وتحديثات مهمة لجميع الأعضاء.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>استخدام الدردشة</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">اضغط على أيقونة <strong>الدردشة</strong> في الرأسية العلوية لفتح اللوحة الجانبية</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">اختر محادثة موجودة من القائمة أو اضغط <strong>محادثة جديدة</strong> لبدء محادثة</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">اكتب رسالتك في حقل الإدخال واضغط <strong>إرسال</strong> أو مفتاح Enter</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">لإرسال صورة أو ملف، اضغط على أيقونة المرفق واختر الملف (حتى 10 ميجابايت)</div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-text">لعرض من قرأ الرسالة، مرر الماوس فوق علامة القراءة ✓✓</div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-text">لحذف رسالة، اضغط على القائمة المنسدلة بجانبها واختر <strong>حذف</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>إيصالات القراءة</h3>
+    <p>
+      يعرض النظام إيصالات قراءة لكل رسالة. تظهر علامة ✓ واحدة عندما تم إرسال الرسالة، وعلامة ✓✓ باللون الأزرق عندما قرأها المستلم. يمكن عرض تفاصيل من قرأ الرسالة بالضغط على علامة القراءة. يتم تحديث حالة القراءة تلقائياً كل 3 ثوانٍ دون الحاجة لتحديث الصفحة.
+    </p>
+  </div>
+</div>
+
+<!-- ========== SECTION 13: Notifications ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">13</div>
+    <h2 class="section-title">الإشعارات</h2>
+  </div>
+
+  <div class="figure">
+    <img src="manual-images/notifications.png" alt="الإشعارات">
+    <div class="figure-caption">شكل 12: واجهة الإشعارات</div>
+  </div>
+
+  <p>
+    نظام الإشعارات هو آلية تنبيه فورية تُبقي المدراء على اطلاع دائم بأي تغييرات تطرأ على المشاريع. تتوفر الإشعارات للمدير العام والمدير التنفيذي فقط، وتُرسل تلقائياً عندما يقوم المشرف بتعديل أي مشروع. هذا يضمن الشفافية ويتيح للمدراء مراجعة التغييرات والموافقة عليها أو التدخل عند الحاجة.
+  </p>
+
+  <div class="subsection">
+    <h3>أنواع الإشعارات</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>النوع</th>
+          <th>الوصف</th>
+          <th>متى يتم إرساله</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-blue">معلومات</span></td>
+          <td>إشعار معلوماتي عام</td>
+          <td>عند إنشاء مشروع جديد أو إضافة عنصر</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-gold">تحذير</span></td>
+          <td>تنبيه عن أمر يحتاج انتباهاً</td>
+          <td>عند اقتراب موعد نهائي أو تأخر في المراحل</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">تغيير</span></td>
+          <td>إشعار عن تعديل في البيانات</td>
+          <td>عند تعديل المشرف على مشروع أو مرحلة</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green">موافقة</span></td>
+          <td>طلب موافقة على تغيير</td>
+          <td>عند إجراء تعديل جوهري يحتاج مراجعة</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="subsection">
+    <h3>إدارة الإشعارات</h3>
+    <p>
+      يمكن الوصول إلى الإشعارات عبر أيقونة الجرس في الرأسية العلوية. يظهر رقم بجانب الأيقونة يشير إلى عدد الإشعارات غير المقروءة. عند النقر على الأيقونة، تظهر قائمة منسدلة بجميع الإشعارات مع إمكانية تحديد الكل كمقروء. يتم الاحتفاظ بسجل كامل بجميع الإشعارات للرجوع إليها لاحقاً. كما يمكن الاطلاع على سجل التغييرات التفصيلي من خلال تبويب خاص متاح للمدراء.
+    </p>
+  </div>
+</div>
+
+<!-- ========== SECTION 14: Export ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">14</div>
+    <h2 class="section-title">التصدير والتقارير</h2>
+  </div>
+
+  <div class="figure">
+    <img src="manual-images/export.png" alt="التصدير والتقارير">
+    <div class="figure-caption">شكل 13: واجهة التصدير والتقارير</div>
+  </div>
+
+  <p>
+    يوفر النظام عدة خيارات لتصدير البيانات والتقارير بصيغ مختلفة تناسب متطلبات العمل المتنوعة. يمكن تصدير البيانات بصيغة Excel للتحليل الإضافي، أو بصيغة PDF للتقارير الرسمية، مع إمكانية الطباعة بحجم A3. تختلف محتويات التصدير حسب اللغة المختارة حيث يكون التصدير باللغة العربية بصيغة Excel والتصدير باللغة الإنجليزية بصيغة HTML/PDF.
+  </p>
+
+  <div class="subsection">
+    <h3>خيارات التصدير</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>الخيار</th>
+          <th>الصيغة</th>
+          <th>المحتوى</th>
+          <th>اللغة</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>تصدير إكسل</td>
+          <td>XLSX</td>
+          <td>جميع بيانات المشاريع والعناصر والمراحل والمواد</td>
+          <td>عربي</td>
+        </tr>
+        <tr>
+          <td>تصدير PDF</td>
+          <td>HTML/PDF</td>
+          <td>تقرير شامل مع رسوم بيانية وأشرطة تقدم</td>
+          <td>إنجليزي</td>
+        </tr>
+        <tr>
+          <td>طباعة A3</td>
+          <td>مباشر للطابعة</td>
+          <td>التقرير بحجم A3 للعرض الكبير</td>
+          <td>حسب اللغة</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="subsection">
+    <h3>خطوات التصدير</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">من الرأسية العلوية، اضغط على زر التصدير المطلوب (إكسل / PDF / طباعة A3)</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">سيقوم النظام بتجهيز التقرير بناءً على البيانات الحالية</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">بالنسبة لتصدير إكسل أو PDF، سيتم تنزيل الملف تلقائياً على جهازك</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">بالنسبة لطباعة A3، ستظهر نافذة الطباعة لاختيار الطابعة وإعداداتها</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SECTION 15: Roles ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">15</div>
+    <h2 class="section-title">أدوار المستخدمين وصلاحياتهم</h2>
+  </div>
+
+  <p>
+    يعتمد نظام الوان الخليج على نظام أدوار متدرج يحدد صلاحيات كل مستخدم وفق مسؤولياته الوظيفية. يوجد أربعة أدوار رئيسية، لكل منها مجموعة محددة من الصلاحيات التي تضمن أمن البيانات وسير العمل المنظم. يمكن للمدير العام فقط تغيير أدوار المستخدمين وتعديل صلاحياتهم.
+  </p>
+
+  <div class="subsection">
+    <h3>الأدوار الأربعة</h3>
+
+    <div class="role-card">
+      <div class="role-icon" style="background:#fef3c7;color:#92400e;">👑</div>
+      <div class="role-content">
+        <h4>المدير العام (General Manager)</h4>
+        <p>له صلاحيات كاملة في النظام: إنشاء وتعديل وحذف جميع المشاريع والعناصر والمراحل والمواد. إدارة المستخدمين وتغيير أدوارهم وحالاتهم. عرض سجل التغييرات والإشعارات. حذف الرسائل في الدردشة. إدارة الأقسام. لا يمكن تغيير دور المدير العام أو حذفه، ولا يمكن تعيين أكثر من مدير عام واحد.</p>
+      </div>
+    </div>
+
+    <div class="role-card">
+      <div class="role-icon" style="background:#dbeafe;color:#1e40af;">👔</div>
+      <div class="role-content">
+        <h4>المدير التنفيذي (Executive Manager)</h4>
+        <p>يمكنه تعديل وحذف المشاريع المسندة إليه فقط. عرض سجل التغييرات والإشعارات الخاصة بمشاريعه. لا يمكنه إضافة مواد مستخدمة أو إدارة المستخدمين أو المواد الأولية. يمكنه إنشاء مشاريع جديدة ولكن لا يمكنه تعديل مشاريع المسؤولين التنفيذيين الآخرين.</p>
+      </div>
+    </div>
+
+    <div class="role-card">
+      <div class="role-icon" style="background:#dcfce7;color:#166534;">🔧</div>
+      <div class="role-content">
+        <h4>المشرف (Supervisor)</h4>
+        <p>يمكنه إنشاء مشاريع جديدة وتعديلها، مع تسجيل جميع التغييرات تلقائياً في سجل التغييرات وإرسال إشعارات للمدراء. لا يمكنه إدارة المواد الأولية أو المستخدمين. عند تعديل مشروع، يتم إشعار المدير العام والمدير التنفيذي المسند إليه المشروع بتفاصيل التغييرات.</p>
+      </div>
+    </div>
+
+    <div class="role-card">
+      <div class="role-icon" style="background:#f1f5f9;color:#475569;">📦</div>
+      <div class="role-content">
+        <h4>أمين المستودع (Store Keeper)</h4>
+        <p>مسؤول عن إدارة المواد الأولية: إضافة وتعديل وحذف المواد، وإضافة المواد المستخدمة للمشاريع، واستيراد وتصدير بيانات المواد. لا يمكنه إنشاء أو تعديل أو حذف المشاريع والعناصر. دوره محصور في إدارة المخزون وتتبع الاستهلاك.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>ملخص الصلاحيات</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>الصلاحية</th>
+          <th>المدير العام</th>
+          <th>المدير التنفيذي</th>
+          <th>المشرف</th>
+          <th>أمين المستودع</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>إنشاء مشاريع</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#dc2626;">لا</td></tr>
+        <tr><td>تعديل/حذف المشاريع</td><td style="color:#16a34a;font-weight:700;">الكل</td><td>مشاريعه فقط</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#dc2626;">لا</td></tr>
+        <tr><td>إدارة المواد</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#dc2626;">لا</td><td style="color:#dc2626;">لا</td><td style="color:#16a34a;font-weight:700;">نعم</td></tr>
+        <tr><td>إضافة مواد مستخدمة</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#dc2626;">لا</td><td style="color:#dc2626;">لا</td><td style="color:#16a34a;font-weight:700;">نعم</td></tr>
+        <tr><td>إدارة المستخدمين</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#dc2626;">لا</td><td style="color:#dc2626;">لا</td><td style="color:#dc2626;">لا</td></tr>
+        <tr><td>عرض سجل التغييرات</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#dc2626;">لا</td><td style="color:#dc2626;">لا</td></tr>
+        <tr><td>استلام الإشعارات</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#dc2626;">لا</td><td style="color:#dc2626;">لا</td></tr>
+        <tr><td>إدارة الأقسام</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#dc2626;">لا</td><td style="color:#dc2626;">لا</td><td style="color:#dc2626;">لا</td></tr>
+        <tr><td>حذف الرسائل</td><td style="color:#16a34a;font-weight:700;">الكل</td><td>رسائله</td><td>رسائله</td><td>رسائله</td></tr>
+        <tr><td>الدردشة</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#16a34a;font-weight:700;">نعم</td><td style="color:#16a34a;font-weight:700;">نعم</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========== SECTION 16: FAQ ========== -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">16</div>
+    <h2 class="section-title">الأسئلة الشائعة وحل المشكلات</h2>
+  </div>
+
+  <div class="subsection">
+    <h3>الأسئلة الشائعة</h3>
+
+    <div class="info-box">
+      <div class="info-box-title">س: كيف أستطيع استعادة كلمة المرور الخاصة بي؟</div>
+      ج: حالياً، لا تتوفر ميزة استعادة كلمة المرور ذاتياً. يرجى التواصل مع المدير العام لإعادة تعيين كلمة المرور الخاصة بك. سيقوم المدير بتغيير كلمة المرور وإبلاغك بكلمة المرور الجديدة.
+    </div>
+
+    <div class="info-box">
+      <div class="info-box-title">س: لماذا لا أستطيع رؤية تبويب معين؟</div>
+      ج: تعتمد التبويبات المتاحة على دورك في النظام. تبويب المستخدمين متاح للمدير العام فقط. تبويب المواد الأولية متاح للمدير وأمين المستودع فقط. إذا كنت تعتقد أنك تحتاج صلاحيات إضافية، تواصل مع المدير العام لمراجعة دورك.
+    </div>
+
+    <div class="info-box">
+      <div class="info-box-title">س: هل يمكنني استخدام النظام من الهاتف المحمول؟</div>
+      ج: نعم، النظام مصمم ليكون متجاوباً ويعمل على مختلف أحجام الشاشات بما في ذلك الهواتف المحمولة. ومع ذلك، للحصول على أفضل تجربة، يوصى باستخدام جهاز كمبيوتر أو جهاز لوحي عند العمل على مهام معقدة مثل إدارة المشاريع أو تحليل الرسوم البيانية.
+    </div>
+
+    <div class="info-box">
+      <div class="info-box-title">س: كيف أقوم بتصدير تقرير عن مشروع محدد؟</div>
+      ج: اذهب إلى المشروع المطلوب ثم استخدم أزرار التصدير في الرأسية العلوية. يمكنك اختيار تصدير إكسل أو PDF أو طباعة A3. سيتم تضمين جميع بيانات المشروع الحالي في التقرير المصدر.
+    </div>
+
+    <div class="info-box">
+      <div class="info-box-title">س: هل الرسائل محفوظة في النظام؟</div>
+      ج: نعم، يتم حفظ جميع الرسائل في قاعدة البيانات ويمكن الرجوع إليها في أي وقت. يمكنك حذف رسائلك الخاصة فقط، بينما يمكن للمدير العام حذف أي رسالة. كما يتوفر خيار حذف جميع الرسائل في محادثة معينة للمدير العام.
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>حل المشكلات الشائعة</h3>
+
+    <div class="info-box warning">
+      <div class="info-box-title">مشكلة: لا أستطيع تسجيل الدخول</div>
+      الحل: تحقق من صحة البريد الإلكتروني وكلمة المرور. تأكد من أن حسابك بحالة "نشط" وليس "قيد المراجعة" أو "معلق". إذا استمرت المشكلة، تواصل مع المدير العام للتحقق من حالة حسابك.
+    </div>
+
+    <div class="info-box warning">
+      <div class="info-box-title">مشكلة: الصفحة لا تظهر التحديثات</div>
+      الحل: حاول تحديث الصفحة بالضغط على مفتاح F5 أو Ctrl+R. إذا لم تحل المشكلة، امسح ذاكرة التخزين المؤقت للمتصفح وأعد تحميل الصفحة. تأكد من اتصالك بالإنترنت.
+    </div>
+
+    <div class="info-box warning">
+      <div class="info-box-title">مشكلة: لا أستطيع رفع ملف أو صورة</div>
+      الحل: تأكد من أن حجم الملف لا يتجاوز 10 ميجابايت. تأكد من أن نوع الملف مدعوم (الصور: JPG, PNG, GIF / الملفات: PDF, DOC, XLSX). إذا استمرت المشكلة، جرب استخدام متصفح آخر أو امسح ذاكرة التخزين المؤقت.
+    </div>
+
+    <div class="info-box warning">
+      <div class="info-box-title">مشكلة: لا تظهر اللغة العربية بشكل صحيح</div>
+      الحل: تأكد من ضبط محول اللغة على "عربي" في الرأسية العلوية. إذا استمرت المشكلة، حاول تغيير اللغة إلى الإنجليزية ثم العودة إلى العربية. تأكد من تحديث المتصفح إلى أحدث إصدار.
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>الدعم الفني</h3>
+    <p>
+      إذا واجهت أي مشكلة لم يتم حلها من خلال الحلول المذكورة أعلاه، يمكنك التواصل مع فريق الدعم الفني من خلال نظام الدردشة الداخلي أو عبر البريد الإلكتروني. يرجى تضمين وصف تفصيلي للمشكلة ولقطة شاشة إن أمكن لتسريع عملية الحل. يسعى فريق الدعم للاستجابة خلال 24 ساعة عمل.
+    </p>
+  </div>
+</div>
+
+<!-- ========== BACK COVER ========== -->
+<div class="cover-page" style="min-height: 40vh;">
+  <div class="cover-content">
+    <div class="cover-logo" style="width:60px;height:60px;font-size:24px;border-radius:12px;">AK</div>
+    <div class="cover-subtitle" style="font-size:16px;">نظام الوان الخليج</div>
+    <div class="cover-desc" style="font-size:12px;opacity:0.5;">
+      جميع الحقوق محفوظة 2026 - إدارة تقنية المعلومات
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

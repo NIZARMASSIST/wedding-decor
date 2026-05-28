@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Eye, EyeOff, Globe, LogIn, UserPlus } from 'lucide-react'
+import { Eye, EyeOff, Globe, LogIn, UserPlus, HelpCircle } from 'lucide-react'
 import HelpCenter from '@/components/HelpCenter'
 
 type Language = 'ar' | 'en'
@@ -204,8 +204,19 @@ export default function AuthPage() {
       </div>
 
       <div className="relative w-full max-w-md">
-        {/* Language switcher */}
-        <div className="flex justify-end mb-4">
+        {/* Language switcher & Help */}
+        <div className="flex justify-between items-center mb-4">
+          {/* زر المساعدة */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setHelpOpen(true)}
+            className="gap-1 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white border-blue-600 hover:border-blue-700 shadow-md hover:shadow-lg transition-all duration-200 text-xs"
+            title={language === 'ar' ? 'مركز المساعدة' : 'Help Center'}
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span className="font-bold">?</span>
+          </Button>
           <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm rounded-lg border border-amber-200 p-1">
             <Button
               variant={language === 'ar' ? 'default' : 'ghost'}
@@ -450,16 +461,6 @@ export default function AuthPage() {
           {language === 'ar' ? 'الوان الخليج © 2025 - جميع الحقوق محفوظة' : 'Alwan Al Khaleej © 2025 - All rights reserved'}
         </p>
       </div>
-
-      {/* زر المساعدة العائم - علامة الاستفهام */}
-      <button
-        onClick={() => setHelpOpen(true)}
-        className="fixed bottom-8 z-50 w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white shadow-2xl hover:shadow-blue-500/40 transition-all duration-300 flex items-center justify-center group animate-bounce"
-        style={{ [isRTL ? 'left' : 'right']: '1.5rem', animationIterationCount: '3', animationDuration: '1s' }}
-        title={language === 'ar' ? 'مركز المساعدة - ابحث عن أي مشكلة وحلها' : 'Help Center - Search for any problem and solution'}
-      >
-        <span className="text-3xl font-bold group-hover:scale-110 transition-transform duration-200" style={{ lineHeight: 1 }}>?</span>
-      </button>
 
       {/* مركز المساعدة */}
       <HelpCenter
