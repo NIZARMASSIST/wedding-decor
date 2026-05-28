@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Eye, EyeOff, Globe, LogIn, UserPlus } from 'lucide-react'
+import HelpCenter from '@/components/HelpCenter'
 
 type Language = 'ar' | 'en'
 type AuthMode = 'login' | 'register'
@@ -99,6 +100,7 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const t = translations[language]
   const isRTL = language === 'ar'
@@ -448,6 +450,23 @@ export default function AuthPage() {
           {language === 'ar' ? 'الوان الخليج © 2025 - جميع الحقوق محفوظة' : 'Alwan Al Khaleej © 2025 - All rights reserved'}
         </p>
       </div>
+
+      {/* زر المساعدة العائم - علامة الاستفهام */}
+      <button
+        onClick={() => setHelpOpen(true)}
+        className="fixed bottom-8 z-50 w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white shadow-2xl hover:shadow-blue-500/40 transition-all duration-300 flex items-center justify-center group animate-bounce"
+        style={{ [isRTL ? 'left' : 'right']: '1.5rem', animationIterationCount: '3', animationDuration: '1s' }}
+        title={language === 'ar' ? 'مركز المساعدة - ابحث عن أي مشكلة وحلها' : 'Help Center - Search for any problem and solution'}
+      >
+        <span className="text-3xl font-bold group-hover:scale-110 transition-transform duration-200" style={{ lineHeight: 1 }}>?</span>
+      </button>
+
+      {/* مركز المساعدة */}
+      <HelpCenter
+        isOpen={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        language={language}
+      />
     </div>
   )
 }
