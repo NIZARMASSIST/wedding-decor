@@ -482,7 +482,7 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
             <CardContent className="pt-6">
               <div className="text-center">
                 <div className="text-3xl font-bold text-purple-600">{materials.reduce((sum, m) => sum + m.unitPrice * m.stockQuantity, 0).toFixed(0)}</div>
-                <div className="text-sm text-gray-600">{t.total_cost} (SAR)</div>
+                <div className="text-sm text-gray-600">{t.total_cost} ({language === 'ar' ? 'ر.ق' : 'QR'})</div>
               </div>
             </CardContent>
           </Card>
@@ -530,14 +530,14 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                         {getCategoryLabel(material.category)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{material.unitPrice.toFixed(2)}</TableCell>
+                    <TableCell>{material.unitPrice.toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</TableCell>
                     <TableCell>{material.stockQuantity}</TableCell>
                     <TableCell>
                       <Badge className={material.type === 'raw' ? 'bg-blue-500' : 'bg-orange-500'}>
                         {material.type === 'raw' ? t.materials_raw : t.materials_operational}
                       </Badge>
                     </TableCell>
-                    <TableCell className="font-medium">{(material.unitPrice * material.stockQuantity).toFixed(2)}</TableCell>
+                    <TableCell className="font-medium">{(material.unitPrice * material.stockQuantity).toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</TableCell>
                     <TableCell className="print:hidden">
                       <div className="flex gap-1">
                         {(currentUser?.role === 'general_manager' || currentUser?.role === 'store_keeper') && (
@@ -590,7 +590,7 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                 <SelectContent>
                   <SelectItem value="_none_">{language === 'ar' ? 'بدون' : 'None'}</SelectItem>
                   {projects.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.projectDate ? new Date(p.projectDate).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : (p.nameAr || p.name)}</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.projectDate ? new Date(p.projectDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : (p.nameAr || p.name)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -625,8 +625,8 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                       <TableCell className="font-medium">{pm.material?.name || '-'}</TableCell>
                       <TableCell>{pm.material?.unit || '-'}</TableCell>
                       <TableCell>{pm.quantity}</TableCell>
-                      <TableCell>{pm.material?.unitPrice.toFixed(2) || '0.00'}</TableCell>
-                      <TableCell className="font-medium">{((pm.material?.unitPrice || 0) * pm.quantity).toFixed(2)}</TableCell>
+                      <TableCell>{pm.material?.unitPrice.toFixed(2) || '0.00'} {language === 'ar' ? 'ر.ق' : 'QR'}</TableCell>
+                      <TableCell className="font-medium">{((pm.material?.unitPrice || 0) * pm.quantity).toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</TableCell>
                       <TableCell className="text-sm text-gray-500">{pm.notes || '-'}</TableCell>
                       <TableCell className="print:hidden">
                         <Button variant="ghost" size="icon" onClick={() => handleRemoveMaterialFromProject(pm.id)}>
@@ -641,7 +641,7 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                     <TableCell colSpan={3}>{language === 'ar' ? 'الإجمالي' : 'Total'}</TableCell>
                     <TableCell>{projectMaterials.reduce((sum, pm) => sum + pm.quantity, 0)}</TableCell>
                     <TableCell></TableCell>
-                    <TableCell>{projectMaterials.reduce((sum, pm) => sum + (pm.material?.unitPrice || 0) * pm.quantity, 0).toFixed(2)}</TableCell>
+                    <TableCell>{projectMaterials.reduce((sum, pm) => sum + (pm.material?.unitPrice || 0) * pm.quantity, 0).toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</TableCell>
                     <TableCell colSpan={2}></TableCell>
                   </TableRow>
                 </tfoot>
@@ -784,7 +784,7 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                 <SelectTrigger><SelectValue placeholder={language === 'ar' ? 'اختر المشروع' : 'Select Project'} /></SelectTrigger>
                 <SelectContent>
                   {projects.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.projectDate ? new Date(p.projectDate).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : (p.nameAr || p.name)}</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.projectDate ? new Date(p.projectDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : (p.nameAr || p.name)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

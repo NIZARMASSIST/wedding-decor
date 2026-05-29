@@ -352,7 +352,7 @@ export default function ChatSidebar({ isOpen, onClose, currentUser, language }: 
     if (diffMins < 60) return `${diffMins} ${isRTL ? 'د' : 'm'}`
     if (diffHours < 24) return `${diffHours} ${isRTL ? 'س' : 'h'}`
     if (diffDays < 7) return `${diffDays} ${isRTL ? 'ي' : 'd'}`
-    return date.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')
+    return date.toLocaleDateString(isRTL ? 'ar-QA' : 'en-US')
   }
 
   // تنسيق حجم الملف
@@ -365,7 +365,7 @@ export default function ChatSidebar({ isOpen, onClose, currentUser, language }: 
   // تنسيق وقت الرسالة
   const formatMessageTime = (dateStr: string) => {
     const date = new Date(dateStr)
-    return date.toLocaleTimeString(isRTL ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+    return date.toLocaleTimeString(isRTL ? 'ar-QA' : 'en-US', { hour: '2-digit', minute: '2-digit' })
   }
 
   // حالة القراءة
@@ -805,7 +805,7 @@ export default function ChatSidebar({ isOpen, onClose, currentUser, language }: 
                 <div key={r.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
                   <span className="font-medium text-sm">{r.user.name}</span>
                   <span className="text-xs text-gray-400">
-                    {new Date(r.readAt).toLocaleTimeString(isRTL ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(r.readAt).toLocaleTimeString(isRTL ? 'ar-QA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
               ))}

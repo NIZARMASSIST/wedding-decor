@@ -1195,7 +1195,7 @@ export default function Home() {
   const formatDate = (date: Date | string | undefined) => {
     if (!date) return '-'
     const d = new Date(date)
-    return d.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', {
+    return d.toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', {
       year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
     })
   }
@@ -1217,7 +1217,7 @@ export default function Home() {
   const getProjectDisplayName = (project: Project) => {
     if (project.projectDate) {
       const d = new Date(project.projectDate)
-      return d.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', {
+      return d.toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', {
         year: 'numeric', month: 'long', day: 'numeric'
       })
     }
@@ -1363,7 +1363,7 @@ export default function Home() {
                               <div key={n.id} className={`p-3 border-b hover:bg-gray-50 ${!n.isRead ? 'bg-blue-50' : ''}`}>
                                 <p className="font-medium text-sm">{n.title}</p>
                                 <p className="text-xs text-gray-500 mt-1">{n.message}</p>
-                                <p className="text-xs text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString(language === 'ar' ? 'ar-SA' : 'en-US')}</p>
+                                <p className="text-xs text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString(language === 'ar' ? 'ar-QA' : 'en-US')}</p>
                               </div>
                             ))}
                           </div>
@@ -1564,7 +1564,7 @@ export default function Home() {
                           {project.startDate && (
                             <div className="flex items-center gap-1.5 text-blue-700 bg-blue-50 rounded-md px-2 py-1">
                               <Calendar className="w-3 h-3" />
-                              <span>{new Date(project.startDate).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' })}</span>
+                              <span>{new Date(project.startDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { month: 'short', day: 'numeric' })}</span>
                             </div>
                           )}
                           {project.clientName && (
@@ -1576,7 +1576,7 @@ export default function Home() {
                           {project.endDate && (
                             <div className="flex items-center gap-1.5 text-green-700 bg-green-50 rounded-md px-2 py-1">
                               <CheckCircle2 className="w-3 h-3" />
-                              <span>{new Date(project.endDate).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' })}</span>
+                              <span>{new Date(project.endDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { month: 'short', day: 'numeric' })}</span>
                             </div>
                           )}
                         </div>
@@ -1599,7 +1599,7 @@ export default function Home() {
                         <div className="flex items-center gap-4 text-xs text-gray-500">
                           <span className="flex items-center gap-1"><Package className="w-3.5 h-3.5" /> {projectItems.length} {language === 'ar' ? 'عنصر' : 'items'}</span>
                           <span className="flex items-center gap-1"><Box className="w-3.5 h-3.5" /> {pms.length} {language === 'ar' ? 'مواد' : 'materials'}</span>
-                          {totalCost > 0 && <span className="flex items-center gap-1 text-green-600 font-medium">{totalCost.toFixed(0)} SAR</span>}
+                          {totalCost > 0 && <span className="flex items-center gap-1 text-green-600 font-medium">{totalCost.toFixed(0)} {language === 'ar' ? 'ر.ق' : 'QR'}</span>}
                         </div>
                         {/* المواد المستعملة */}
                         {(usedMaterialsMap[project.id] || []).length > 0 && (
@@ -1696,13 +1696,13 @@ export default function Home() {
                             {project.executiveManager && <span className="flex items-center gap-1"><User className="w-3 h-3" />{project.executiveManager}</span>}
                             <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {projectItems.length}</span>
                             <span className="flex items-center gap-1"><Box className="w-3 h-3" /> {pms.length}</span>
-                            {totalCost > 0 && <span className="text-green-600 font-medium">{totalCost.toFixed(0)} SAR</span>}
+                            {totalCost > 0 && <span className="text-green-600 font-medium">{totalCost.toFixed(0)} {language === 'ar' ? 'ر.ق' : 'QR'}</span>}
                           </div>
                           <div className="flex items-center gap-3">
                             <Progress value={projectProgress} className="h-1.5 flex-1 max-w-[200px]" />
                             <span className="text-xs font-bold text-amber-600">{projectProgress}%</span>
                             {project.startDate && (
-                              <span className="text-xs text-blue-600">{new Date(project.startDate).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' })} → {project.endDate ? new Date(project.endDate).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' }) : '?'}</span>
+                              <span className="text-xs text-blue-600">{new Date(project.startDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { month: 'short', day: 'numeric' })} → {project.endDate ? new Date(project.endDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { month: 'short', day: 'numeric' }) : '?'}</span>
                             )}
                           </div>
                           {project.notes && (
@@ -1804,7 +1804,7 @@ export default function Home() {
                             {project.startDate && (
                               <div className="flex items-center gap-1.5 text-blue-700 bg-blue-50 rounded-md px-2 py-1">
                                 <Calendar className="w-3 h-3" />
-                                <span>{new Date(project.startDate).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' })}</span>
+                                <span>{new Date(project.startDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { month: 'short', day: 'numeric' })}</span>
                               </div>
                             )}
                             {project.clientName && (
@@ -1816,7 +1816,7 @@ export default function Home() {
                             {project.endDate && (
                               <div className="flex items-center gap-1.5 text-green-700 bg-green-50 rounded-md px-2 py-1">
                                 <CheckCircle2 className="w-3 h-3" />
-                                <span>{new Date(project.endDate).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' })}</span>
+                                <span>{new Date(project.endDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { month: 'short', day: 'numeric' })}</span>
                               </div>
                             )}
                           </div>
@@ -1836,7 +1836,7 @@ export default function Home() {
                         {totalCost > 0 && (
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-500">{language === 'ar' ? 'تكلفة المواد' : 'Materials Cost'}</span>
-                            <span className="font-bold text-green-600">{totalCost.toFixed(2)} SAR</span>
+                            <span className="font-bold text-green-600">{totalCost.toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</span>
                           </div>
                         )}
                         {project.deadline && (
@@ -1864,7 +1864,7 @@ export default function Home() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {totalCost > 0 && (
-                                    <span className="text-xs font-bold text-green-600">{totalCost.toFixed(2)} SAR</span>
+                                    <span className="text-xs font-bold text-green-600">{totalCost.toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</span>
                                   )}
                                   {expandedProjectMaterials === project.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                 </div>
@@ -1902,7 +1902,7 @@ export default function Home() {
                                         <tfoot>
                                           <TableRow className="bg-amber-50">
                                             <TableCell colSpan={3} className="text-xs py-1 font-bold">{language === 'ar' ? 'الإجمالي' : 'Total'}</TableCell>
-                                            <TableCell className="text-xs py-1 font-bold text-green-700">{totalCost.toFixed(2)} SAR</TableCell>
+                                            <TableCell className="text-xs py-1 font-bold text-green-700">{totalCost.toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</TableCell>
                                             <TableCell></TableCell>
                                           </TableRow>
                                         </tfoot>
@@ -3558,11 +3558,11 @@ export default function Home() {
               <div className="bg-amber-50 p-3 rounded-lg">
                 <div className="flex justify-between text-sm">
                   <span>{language === 'ar' ? 'سعر الوحدة' : 'Unit Price'}:</span>
-                  <span className="font-medium">{(materials.find(m => m.id === selectedMaterialForProject)?.unitPrice || 0).toFixed(2)} SAR</span>
+                  <span className="font-medium">{(materials.find(m => m.id === selectedMaterialForProject)?.unitPrice || 0).toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</span>
                 </div>
                 <div className="flex justify-between text-sm font-bold mt-1">
                   <span>{language === 'ar' ? 'الإجمالي' : 'Total'}:</span>
-                  <span className="text-green-700">{((materials.find(m => m.id === selectedMaterialForProject)?.unitPrice || 0) * newMaterialQuantity).toFixed(2)} SAR</span>
+                  <span className="text-green-700">{((materials.find(m => m.id === selectedMaterialForProject)?.unitPrice || 0) * newMaterialQuantity).toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</span>
                 </div>
               </div>
             )}
