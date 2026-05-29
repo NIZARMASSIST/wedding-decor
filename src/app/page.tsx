@@ -1195,7 +1195,7 @@ export default function Home() {
   const formatDate = (date: Date | string | undefined) => {
     if (!date) return '-'
     const d = new Date(date)
-    return d.toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', {
+    return d.toLocaleDateString('en-US', {
       year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
     })
   }
@@ -1217,7 +1217,7 @@ export default function Home() {
   const getProjectDisplayName = (project: Project) => {
     if (project.projectDate) {
       const d = new Date(project.projectDate)
-      return d.toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', {
+      return d.toLocaleDateString('en-US', {
         year: 'numeric', month: 'long', day: 'numeric'
       })
     }
@@ -1363,7 +1363,7 @@ export default function Home() {
                               <div key={n.id} className={`p-3 border-b hover:bg-gray-50 ${!n.isRead ? 'bg-blue-50' : ''}`}>
                                 <p className="font-medium text-sm">{n.title}</p>
                                 <p className="text-xs text-gray-500 mt-1">{n.message}</p>
-                                <p className="text-xs text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString(language === 'ar' ? 'ar-QA' : 'en-US')}</p>
+                                <p className="text-xs text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString('en-US')}</p>
                               </div>
                             ))}
                           </div>
@@ -1564,7 +1564,7 @@ export default function Home() {
                           {project.startDate && (
                             <div className="flex items-center gap-1.5 text-blue-700 bg-blue-50 rounded-md px-2 py-1">
                               <Calendar className="w-3 h-3" />
-                              <span>{new Date(project.startDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { month: 'short', day: 'numeric' })}</span>
+                              <span>{new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                             </div>
                           )}
                           {project.clientName && (
@@ -1576,7 +1576,7 @@ export default function Home() {
                           {project.endDate && (
                             <div className="flex items-center gap-1.5 text-green-700 bg-green-50 rounded-md px-2 py-1">
                               <CheckCircle2 className="w-3 h-3" />
-                              <span>{new Date(project.endDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { month: 'short', day: 'numeric' })}</span>
+                              <span>{new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                             </div>
                           )}
                         </div>
@@ -1702,7 +1702,7 @@ export default function Home() {
                             <Progress value={projectProgress} className="h-1.5 flex-1 max-w-[200px]" />
                             <span className="text-xs font-bold text-amber-600">{projectProgress}%</span>
                             {project.startDate && (
-                              <span className="text-xs text-blue-600">{new Date(project.startDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { month: 'short', day: 'numeric' })} → {project.endDate ? new Date(project.endDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { month: 'short', day: 'numeric' }) : '?'}</span>
+                              <span className="text-xs text-blue-600">{new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} → {project.endDate ? new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '?'}</span>
                             )}
                           </div>
                           {project.notes && (
@@ -1804,7 +1804,7 @@ export default function Home() {
                             {project.startDate && (
                               <div className="flex items-center gap-1.5 text-blue-700 bg-blue-50 rounded-md px-2 py-1">
                                 <Calendar className="w-3 h-3" />
-                                <span>{new Date(project.startDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { month: 'short', day: 'numeric' })}</span>
+                                <span>{new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                               </div>
                             )}
                             {project.clientName && (
@@ -1816,7 +1816,7 @@ export default function Home() {
                             {project.endDate && (
                               <div className="flex items-center gap-1.5 text-green-700 bg-green-50 rounded-md px-2 py-1">
                                 <CheckCircle2 className="w-3 h-3" />
-                                <span>{new Date(project.endDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { month: 'short', day: 'numeric' })}</span>
+                                <span>{new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                               </div>
                             )}
                           </div>

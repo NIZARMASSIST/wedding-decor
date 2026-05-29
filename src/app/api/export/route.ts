@@ -380,7 +380,7 @@ async function generateExcel(data: {
 
   const chartsData = [
     ['تقرير الوان الخليج لتصنيع ديكور الأعراس' + data.projectName],
-    ['تاريخ التقرير', new Date().toLocaleDateString('ar-QA')],
+    ['تاريخ التقرير', new Date().toLocaleDateString('en-US')],
     [''],
     ['═══════════════════════════════════════════════════════════════'],
     ['الإحصائيات العامة'],
@@ -437,7 +437,7 @@ async function generateExcel(data: {
   // === ورقة ملخص ===
   const summarySheet = XLSX.utils.aoa_to_sheet([
     ['الوان الخليج - تقرير تصنيع ديكور الأعراس' + data.projectName],
-    ['تاريخ التقرير', new Date().toLocaleDateString('ar-QA')],
+    ['تاريخ التقرير', new Date().toLocaleDateString('en-US')],
     [''],
     ['إحصائيات عامة'],
     ['إجمالي العناصر', data.items.length],
@@ -471,7 +471,7 @@ async function generateExcel(data: {
         item.status === 'in_progress' ? 'قيد التنفيذ' : 'قيد الانتظار',
       item.stages.length,
       totalTime.toFixed(1),
-      item.deadline ? new Date(item.deadline).toLocaleDateString('ar-QA') : '-',
+      item.deadline ? new Date(item.deadline).toLocaleDateString('en-US') : '-',
       item.notes || '-'
     ]
   })
@@ -535,7 +535,7 @@ async function generateExcel(data: {
             check.itemName,
             check.quantity,
             check.completed ? 'مكتمل' : 'غير مكتمل',
-            check.completedAt ? new Date(check.completedAt).toLocaleDateString('ar-QA') : '-',
+            check.completedAt ? new Date(check.completedAt).toLocaleDateString('en-US') : '-',
             check.notes || '-'
           ])
         }

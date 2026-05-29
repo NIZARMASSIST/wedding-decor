@@ -590,7 +590,7 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                 <SelectContent>
                   <SelectItem value="_none_">{language === 'ar' ? 'بدون' : 'None'}</SelectItem>
                   {projects.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.projectDate ? new Date(p.projectDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : (p.nameAr || p.name)}</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.projectDate ? new Date(p.projectDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : (p.nameAr || p.name)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -784,7 +784,7 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                 <SelectTrigger><SelectValue placeholder={language === 'ar' ? 'اختر المشروع' : 'Select Project'} /></SelectTrigger>
                 <SelectContent>
                   {projects.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.projectDate ? new Date(p.projectDate).toLocaleDateString(language === 'ar' ? 'ar-QA' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : (p.nameAr || p.name)}</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.projectDate ? new Date(p.projectDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : (p.nameAr || p.name)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
