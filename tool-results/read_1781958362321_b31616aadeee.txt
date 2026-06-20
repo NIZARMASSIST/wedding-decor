@@ -1,0 +1,2002 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback, Suspense } from 'react'
+     4→import dynamic from 'next/dynamic'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+     7→import { Input } from '@/components/ui/input'
+     8→import { Label } from '@/components/ui/label'
+     9→import { Textarea } from '@/components/ui/textarea'
+    10→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+    11→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog'
+    12→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    13→import { Badge } from '@/components/ui/badge'
+    14→import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+    15→import { Separator } from '@/components/ui/separator'
+    16→import { Progress } from '@/components/ui/progress'
+    17→import { 
+    18→  Plus, Trash2, Calendar, Clock, Package, Users, 
+    19→  Settings, Printer, ChevronUp, ChevronDown, Edit,
+    20→  Globe, Paperclip, Download, Eye, Play, CheckCircle2,
+    21→  FolderOpen, BarChart3, PieChart, LogOut, User, Upload,
+    22→  Search, Filter, Box, X, LayoutGrid, List, ImageIcon,
+    23→  MapPin, UserCheck, ClipboardList, MessageCircle, HelpCircle
+    24→
+    25→} from 'lucide-react'
+    26→import MaterialsTab from '@/components/MaterialsTab'
+    27→import ChatSidebar from '@/components/ChatSidebar'
+    28→import HelpCenter from '@/components/HelpCenter'
+    29→import { toast } from 'sonner'
+    30→import { translations, Language } from '@/lib/i18n'
+    31→
+    32→// Dynamic import for recharts to avoid SSR issues
+    33→const RechartsComponents = dynamic(
+    34→  () => import('@/components/ChartsWrapper'),
+    35→  { 
+    36→    ssr: false,
+    37→    loading: () => (
+    38→      <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+    39→        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+    40→      </div>
+    41→    )
+    42→  }
+    43→)
+    44→
+    45→// أنواع البيانات
+    46→interface Attachment {
+    47→  id: string
+    48→  stageId: string
+    49→  fileName: string
+    50→  fileType: string
+    51→  fileData: string
+    52→  fileSize: number
+    53→  description?: string
+    54→  uploadType: string
+    55→  uploadedAt: string
+    56→}
+    57→
+    58→interface Department {
+    59→  id: string
+    60→  name: string
+    61→  nameAr: string
+    62→  color: string
+    63→  icon: string
+    64→}
+    65→
+    66→interface Stage {
+    67→  id: string
+    68→  itemId: string
+    69→  departmentId: string
+    70→  department?: Department
+    71→  stageNumber: number
+    72→  timePerUnit: number
+    73→  estimatedTime: number
+    74→  quantity: number
+    75→  shifts: number
+    76→  shift1Start?: string
+    77→  shift1End?: string
+    78→  shift2Start?: string
+    79→  shift2End?: string
+    80→  status: string
+    81→  startDate?: string
+    82→  endDate?: string
+    83→  notes?: string
+    84→  attachments?: Attachment[]
+    85→}
+    86→
+    87→interface ProductionItem {
+    88→  id: string
+    89→  projectId?: string
+    90→  project?: {
+    91→    id: string
+    92→    name: string
+    93→    nameAr?: string
+    94→  }
+    95→  name: string
+    96→  image?: string
+    97→  priority: number
+    98→  notes?: string
+    99→  status: string
+   100→  totalQuantity: number
+   101→  deadline?: string
+   102→  stages: Stage[]
+   103→  createdAt: string
+   104→  updatedAt: string
+   105→}
+   106→
+   107→// واجهة المشروع
+   108→interface Project {
+   109→  id: string
+   110→  name: string
+   111→  nameAr?: string
+   112→  projectDate?: string
+   113→  location?: string
+   114→  recipient?: string
+   115→  executiveManager?: string
+   116→  clientName?: string
+   117→  description?: string
+   118→  image?: string
+   119→  status: string
+   120→  startDate?: string
+   121→  endDate?: string
+   122→  deadline?: string
+   123→  notes?: string
+   124→  notesAuthor?: string
+   125→  createdById?: string
+   126→  createdBy?: { id: string; name: string; role: string }
+   127→  usedMaterials?: any[]
+   128→  createdAt: string
+   129→  updatedAt: string
+   130→}
+   131→
+   132→// واجهة المادة
+   133→interface Material {
+   134→  id: string
+   135→  name: string
+   136→  nameAr?: string
+   137→  unit: string
+   138→  unitAr?: string
+   139→  category: string
+   140→  categoryAr?: string
+   141→  unitPrice: number
+   142→  stockQuantity: number
+   143→  status: string
+   144→  description?: string
+   145→  type: string
+   146→  createdAt: string
+   147→  updatedAt: string
+   148→}
+   149→
+   150→// واجهة ارتباط المادة بالمشروع
+   151→interface ProjectMaterial {
+   152→  id: string
+   153→  projectId: string
+   154→  materialId: string
+   155→  quantity: number
+   156→  notes?: string
+   157→  material?: Material
+   158→}
+   159→
+   160→// واجهة عنصر Checklist
+   161→interface ChecklistItem {
+   162→  id: string
+   163→  stageId: string
+   164→  itemName: string
+   165→  quantity: number
+   166→  completed: boolean
+   167→  completedAt?: string
+   168→  completedBy?: string
+   169→  notes?: string
+   170→  order: number
+   171→}
+   172→
+   173→// حالات العنصر
+   174→const getStatusColor = (status: string) => {
+   175→  switch (status) {
+   176→    case 'pending': return 'bg-yellow-500'
+   177→    case 'in_progress': return 'bg-blue-500'
+   178→    case 'completed': return 'bg-green-500'
+   179→    default: return 'bg-gray-500'
+   180→  }
+   181→}
+   182→
+   183→const getStatusBgColor = (status: string) => {
+   184→  switch (status) {
+   185→    case 'pending': return 'bg-yellow-50 border-yellow-200'
+   186→    case 'in_progress': return 'bg-blue-50 border-blue-200'
+   187→    case 'completed': return 'bg-green-50 border-green-200'
+   188→    default: return 'bg-gray-50'
+   189→  }
+   190→}
+   191→
+   192→// تنسيق حجم الملف
+   193→const formatFileSize = (bytes: number) => {
+   194→  if (bytes < 1024) return `${bytes} B`
+   195→  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+   196→  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+   197→}
+   198→
+   199→// حساب ساعات العمل الفعلية
+   200→const calculateWorkingHours = (shift1Start: string | undefined, shift1End: string | undefined, shift2Start: string | undefined, shift2End: string | undefined) => {
+   201→  const calcShiftHours = (start: string | undefined, end: string | undefined) => {
+   202→    if (!start || !end) return 0
+   203→    const [sh1, sm1] = start.split(':').map(Number)
+   204→    const [sh2, sm2] = end.split(':').map(Number)
+   205→    let hours = sh2 - sh1 + (sm2 - sm1) / 60
+   206→    if (hours < 0) hours += 24 // للشفتات الليلية
+   207→    return hours
+   208→  }
+   209→  return calcShiftHours(shift1Start, shift1End) + calcShiftHours(shift2Start, shift2End)
+   210→}
+   211→
+   212→export default function Home() {
+   213→  const [language, setLanguage] = useState<Language>('ar')
+   214→  const t = translations[language]
+   215→  const isRTL = language === 'ar'
+   216→  
+   217→  const [projects, setProjects] = useState<Project[]>([])
+   218→  const [items, setItems] = useState<ProductionItem[]>([])
+   219→  const [departments, setDepartments] = useState<Department[]>([])
+   220→  const [users, setUsers] = useState<any[]>([])
+   221→  const [loading, setLoading] = useState(true)
+   222→  const [activeTab, setActiveTab] = useState('projects')
+   223→  
+   224→  // حالة المستخدم الحالي
+   225→  const [currentUser, setCurrentUser] = useState<{ id: string; name: string; email: string; phone?: string; role: string } | null>(null)
+   226→  
+   227→  const handleLogout = async () => {
+   228→    try {
+   229→      await fetch('/api/auth/logout', { method: 'POST' })
+   230→      setCurrentUser(null)
+   231→      window.location.href = '/login'
+   232→    } catch {
+   233→      toast.error(t.msg_error)
+   234→    }
+   235→  }
+   236→  
+   237→  // جلب بيانات المستخدم الحالي
+   238→  const [isAuthChecking, setIsAuthChecking] = useState(true)
+   239→  
+   240→  // حالات النوافذ
+   241→  const [addProjectOpen, setAddProjectOpen] = useState(false)
+   242→  const [editProjectOpen, setEditProjectOpen] = useState(false)
+   243→  const [editingProject, setEditingProject] = useState<Project | null>(null)
+   244→  
+   245→  const [addItemOpen, setAddItemOpen] = useState(false)
+   246→  const [editItemOpen, setEditItemOpen] = useState(false)
+   247→  const [editingItem, setEditingItem] = useState<ProductionItem | null>(null)
+   248→  const [addStageOpen, setAddStageOpen] = useState(false)
+   249→  const [editStageOpen, setEditStageOpen] = useState(false)
+   250→  const [editingStage, setEditingStage] = useState<Stage | null>(null)
+   251→  const [selectedItemId, setSelectedItemId] = useState<string>('')
+   252→  const [addDeptOpen, setAddDeptOpen] = useState(false)
+   253→  const [editDeptOpen, setEditDeptOpen] = useState(false)
+   254→  const [editingDept, setEditingDept] = useState<Department | null>(null)
+   255→  const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false)
+   256→  const [selectedStageId, setSelectedStageId] = useState<string>('')
+   257→  const [viewAttachmentsOpen, setViewAttachmentsOpen] = useState(false)
+   258→  const [viewingStage, setViewingStage] = useState<Stage | null>(null)
+   259→  
+   260→  // نافذة Checklist
+   261→  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false)
+   262→  const [viewingStageChecklist, setViewingStageChecklist] = useState<Stage | null>(null)
+   263→
+   264→  // حالات العناصر الجديدة
+   265→  const [newProject, setNewProject] = useState({
+   266→    name: '', nameAr: '', projectDate: '', location: '', recipient: '', executiveManager: '',
+   267→    clientName: '', description: '', image: '', notes: '', notesAuthor: '',
+   268→    startDate: '', endDate: '', deadline: ''
+   269→  })
+   270→  
+   271→  const [newItem, setNewItem] = useState({
+   272→    name: '', image: '', priority: 1, notes: '', totalQuantity: 1, deadline: '', projectId: ''
+   273→  })
+   274→  const [newStages, setNewStages] = useState<any[]>([])
+   275→  
+   276→  const [newStage, setNewStage] = useState({
+   277→    departmentId: '', timePerUnit: 0, quantity: 1, shifts: 1, notes: '',
+   278→    shift1Start: '08:00', shift1End: '16:00', shift2Start: '', shift2End: ''
+   279→  })
+   280→  
+   281→  const [newDept, setNewDept] = useState({ name: '', nameAr: '', color: '#6B7280', icon: 'settings' })
+   282→  
+   283→  // حالة رفع الملف
+   284→  const [uploadingFile, setUploadingFile] = useState(false)
+   285→  const [fileInputKey, setFileInputKey] = useState(0)
+   286→  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+   287→  const [fileDescription, setFileDescription] = useState('')
+   288→  const [uploadType, setUploadType] = useState('work')
+   289→
+   290→  // حالات المواد للمشاريع
+   291→  const [materials, setMaterials] = useState<Material[]>([])
+   292→  const [projectMaterialsMap, setProjectMaterialsMap] = useState<Record<string, ProjectMaterial[]>>({})
+   293→  const [addMaterialToProjectOpen, setAddMaterialToProjectOpen] = useState(false)
+   294→  const [selectedProjectForMaterial, setSelectedProjectForMaterial] = useState<string>('')
+   295→  const [selectedMaterialForProject, setSelectedMaterialForProject] = useState<string>('')
+   296→  const [newMaterialQuantity, setNewMaterialQuantity] = useState(1)
+   297→  const [materialSearchQuery, setMaterialSearchQuery] = useState('')
+   298→  const [expandedProjectMaterials, setExpandedProjectMaterials] = useState<string>('')
+   299→  const [projectViewMode, setProjectViewMode] = useState<'grid' | 'list' | 'gallery'>('grid')
+   300→  const [itemViewMode, setItemViewMode] = useState<'grid' | 'list' | 'gallery'>('grid')
+   301→  const [itemProjectFilter, setItemProjectFilter] = useState<string>('all')
+   302→  const [itemDepartmentFilter, setItemDepartmentFilter] = useState<string>('all')
+   303→
+   304→  // حالات الإشعارات والمواد المستعملة
+   305→  const [notifications, setNotifications] = useState<any[]>([])
+   306→  const [unreadNotifications, setUnreadNotifications] = useState(0)
+   307→  const [showNotifications, setShowNotifications] = useState(false)
+   308→  const [usedMaterialsMap, setUsedMaterialsMap] = useState<Record<string, any[]>>({})
+   309→  const [addUsedMaterialOpen, setAddUsedMaterialOpen] = useState(false)
+   310→  const [selectedProjectForUsedMaterial, setSelectedProjectForUsedMaterial] = useState('')
+   311→  const [selectedMaterialForUsedMaterial, setSelectedMaterialForUsedMaterial] = useState('')
+   312→  const [newUsedMaterialQuantity, setNewUsedMaterialQuantity] = useState(1)
+   313→  const [usedMaterialNotes, setUsedMaterialNotes] = useState('')
+   314→  const [usedMaterialSearchQuery, setUsedMaterialSearchQuery] = useState('')
+   315→  const [editingUserField, setEditingUserField] = useState<{userId: string, field: 'name' | 'phone'} | null>(null)
+   316→  const [editUserValue, setEditUserValue] = useState('')
+   317→  const [chatOpen, setChatOpen] = useState(false)
+   318→  const [helpOpen, setHelpOpen] = useState(false)
+   319→
+   320→  // جلب المواد
+   321→  const fetchMaterials = useCallback(async () => {
+   322→    try {
+   323→      const res = await fetch('/api/materials')
+   324→      if (res.ok) {
+   325→        const data = await res.json()
+   326→        setMaterials(Array.isArray(data) ? data : [])
+   327→      }
+   328→    } catch (error) {
+   329→      console.error('Error fetching materials:', error)
+   330→    }
+   331→  }, [])
+   332→
+   333→  // جلب مواد مشروع محدد
+   334→  const fetchProjectMaterials = useCallback(async (projectId: string) => {
+   335→    try {
+   336→      const res = await fetch(`/api/materials?projectId=${projectId}`)
+   337→      if (res.ok) {
+   338→        const data = await res.json()
+   339→        setProjectMaterialsMap(prev => ({
+   340→          ...prev,
+   341→          [projectId]: data.projectMaterials || []
+   342→        }))
+   343→      }
+   344→    } catch (error) {
+   345→      console.error('Error fetching project materials:', error)
+   346→    }
+   347→  }, [])
+   348→
+   349→  // جلب مواد جميع المشاريع
+   350→  const fetchAllProjectMaterials = useCallback(async (projectIds: string[]) => {
+   351→    const results = await Promise.allSettled(
+   352→      projectIds.map(async (pid) => {
+   353→        const res = await fetch(`/api/materials?projectId=${pid}`)
+   354→        if (res.ok) {
+   355→          const data = await res.json()
+   356→          return { pid, pms: data.projectMaterials || [] }
+   357→        }
+   358→        return { pid, pms: [] }
+   359→      })
+   360→    )
+   361→    const newMap: Record<string, ProjectMaterial[]> = {}
+   362→    results.forEach(r => {
+   363→      if (r.status === 'fulfilled') {
+   364→        newMap[r.value.pid] = r.value.pms
+   365→      }
+   366→    })
+   367→    setProjectMaterialsMap(newMap)
+   368→  }, [])
+   369→
+   370→  // إضافة مادة لمشروع
+   371→  const handleAddMaterialToProject = async () => {
+   372→    if (!selectedProjectForMaterial || !selectedMaterialForProject) {
+   373→      toast.error(language === 'ar' ? 'اختر المشروع والمادة' : 'Select project and material')
+   374→      return
+   375→    }
+   376→    try {
+   377→      const res = await fetch('/api/materials', {
+   378→        method: 'PUT',
+   379→        headers: { 'Content-Type': 'application/json' },
+   380→        body: JSON.stringify({
+   381→          action: 'addToProject',
+   382→          projectId: selectedProjectForMaterial,
+   383→          materialId: selectedMaterialForProject,
+   384→          quantity: newMaterialQuantity
+   385→        })
+   386→      })
+   387→      if (res.ok) {
+   388→        toast.success(language === 'ar' ? 'تم إضافة المادة للمشروع' : 'Material added to project')
+   389→        setAddMaterialToProjectOpen(false)
+   390→        setSelectedMaterialForProject('')
+   391→        setNewMaterialQuantity(1)
+   392→        fetchProjectMaterials(selectedProjectForMaterial)
+   393→        fetchMaterials()
+   394→      } else {
+   395→        const errData = await res.json().catch(() => ({}))
+   396→        toast.error(errData.error || t.msg_error)
+   397→      }
+   398→    } catch (error) {
+   399→      toast.error(t.msg_error)
+   400→    }
+   401→  }
+   402→
+   403→  // حذف مادة من مشروع
+   404→  const handleRemoveMaterialFromProject = async (pmId: string, projectId: string) => {
+   405→    try {
+   406→      const res = await fetch('/api/materials', {
+   407→        method: 'PUT',
+   408→        headers: { 'Content-Type': 'application/json' },
+   409→        body: JSON.stringify({ action: 'removeFromProject', id: pmId })
+   410→      })
+   411→      if (res.ok) {
+   412→        toast.success(language === 'ar' ? 'تم إزالة المادة من المشروع' : 'Material removed from project')
+   413→        fetchProjectMaterials(projectId)
+   414→      }
+   415→    } catch (error) {
+   416→      toast.error(t.msg_error)
+   417→    }
+   418→  }
+   419→
+   420→  // جلب الإشعارات
+   421→  const fetchNotifications = useCallback(async () => {
+   422→    try {
+   423→      const res = await fetch('/api/notifications')
+   424→      if (res.ok) {
+   425→        const data = await res.json()
+   426→        setNotifications(data.notifications || [])
+   427→        setUnreadNotifications(data.unreadCount || 0)
+   428→      }
+   429→    } catch (error) {
+   430→      console.error('Error fetching notifications:', error)
+   431→    }
+   432→  }, [])
+   433→
+   434→  // جلب المواد المستعملة لمشروع
+   435→  const fetchUsedMaterials = useCallback(async (projectId: string) => {
+   436→    try {
+   437→      const res = await fetch(`/api/materials?projectId=${projectId}`)
+   438→      if (res.ok) {
+   439→        const data = await res.json()
+   440→        setUsedMaterialsMap(prev => ({
+   441→          ...prev,
+   442→          [projectId]: data.usedMaterials || []
+   443→        }))
+   444→      }
+   445→    } catch (error) {
+   446→      console.error('Error fetching used materials:', error)
+   447→    }
+   448→  }, [])
+   449→
+   450→  // إضافة مادة مستعملة
+   451→  const handleAddUsedMaterial = async () => {
+   452→    if (!selectedProjectForUsedMaterial || !selectedMaterialForUsedMaterial) {
+   453→      toast.error(language === 'ar' ? 'اختر المشروع والمادة' : 'Select project and material')
+   454→      return
+   455→    }
+   456→    try {
+   457→      const res = await fetch('/api/materials', {
+   458→        method: 'PUT',
+   459→        headers: { 'Content-Type': 'application/json' },
+   460→        body: JSON.stringify({
+   461→          action: 'addUsedMaterial',
+   462→          projectId: selectedProjectForUsedMaterial,
+   463→          materialId: selectedMaterialForUsedMaterial,
+   464→          quantity: newUsedMaterialQuantity,
+   465→          notes: usedMaterialNotes
+   466→        })
+   467→      })
+   468→      if (res.ok) {
+   469→        toast.success(language === 'ar' ? 'تم إضافة المادة المستعملة' : 'Used material added')
+   470→        setAddUsedMaterialOpen(false)
+   471→        setSelectedMaterialForUsedMaterial('')
+   472→        setNewUsedMaterialQuantity(1)
+   473→        setUsedMaterialNotes('')
+   474→        setUsedMaterialSearchQuery('')
+   475→        fetchUsedMaterials(selectedProjectForUsedMaterial)
+   476→      } else {
+   477→        const errData = await res.json().catch(() => ({}))
+   478→        toast.error(errData.error || t.msg_error)
+   479→      }
+   480→    } catch (error) {
+   481→      toast.error(t.msg_error)
+   482→    }
+   483→  }
+   484→
+   485→  // حذف مادة مستعملة
+   486→  const handleRemoveUsedMaterial = async (id: string, projectId: string) => {
+   487→    try {
+   488→      const res = await fetch('/api/materials', {
+   489→        method: 'PUT',
+   490→        headers: { 'Content-Type': 'application/json' },
+   491→        body: JSON.stringify({ action: 'removeUsedMaterial', id })
+   492→      })
+   493→      if (res.ok) {
+   494→        toast.success(language === 'ar' ? 'تم إزالة المادة المستعملة' : 'Used material removed')
+   495→        fetchUsedMaterials(projectId)
+   496→      }
+   497→    } catch (error) {
+   498→      toast.error(t.msg_error)
+   499→    }
+   500→  }
+   501→
+   502→  // جلب البيانات
+   503→  const fetchData = useCallback(async () => {
+   504→    try {
+   505→      setLoading(true)
+   506→      
+   507→      const [projectsRes, itemsRes, deptsRes] = await Promise.all([
+   508→        fetch('/api/projects'),
+   509→        fetch('/api/items'),
+   510→        fetch('/api/departments')
+   511→      ])
+   512→      
+   513→      // التحقق من الاستجابات
+   514→      if (!projectsRes.ok || !itemsRes.ok || !deptsRes.ok) {
+   515→        console.error('API Error:', {
+   516→          projects: projectsRes.status,
+   517→          items: itemsRes.status,
+   518→          depts: deptsRes.status
+   519→        })
+   520→        throw new Error('Failed to fetch data')
+   521→      }
+   522→      
+   523→      const projectsData = await projectsRes.json()
+   524→      const itemsData = await itemsRes.json()
+   525→      const deptsData = await deptsRes.json()
+   526→      
+   527→      console.log('Fetched data:', {
+   528→        projects: projectsData?.length || 0,
+   529→        items: itemsData?.length || 0,
+   530→        departments: deptsData?.length || 0
+   531→      })
+   532→      
+   533→      // جلب المرفقات لكل مرحلة
+   534→      let attachmentsData: Attachment[] = []
+   535→      let checklistData: ChecklistItem[] = []
+   536→      
+   537→      try {
+   538→        const attachmentsRes = await fetch('/api/attachments')
+   539→        if (attachmentsRes.ok) {
+   540→          attachmentsData = await attachmentsRes.json()
+   541→        }
+   542→      } catch (e) {
+   543→        console.error('Error fetching attachments:', e)
+   544→      }
+   545→      
+   546→      try {
+   547→        const checklistRes = await fetch('/api/checklist')
+   548→        if (checklistRes.ok) {
+   549→          checklistData = await checklistRes.json()
+   550→        }
+   551→      } catch (e) {
+   552→        console.error('Error fetching checklist:', e)
+   553→      }
+   554→      
+   555→      const itemsWithAttachments = (Array.isArray(itemsData) ? itemsData : []).map((item: ProductionItem) => ({
+   556→        ...item,
+   557→        stages: item.stages?.map((stage: Stage) => ({
+   558→          ...stage,
+   559→          attachments: attachmentsData.filter((a: Attachment) => a.stageId === stage.id),
+   560→          checklist: checklistData.filter((c: ChecklistItem) => c.stageId === stage.id).sort((a: ChecklistItem, b: ChecklistItem) => a.order - b.order)
+   561→        })) || []
+   562→      }))
+   563→      
+   564→      setProjects(Array.isArray(projectsData) ? projectsData : [])
+   565→      setItems(itemsWithAttachments)
+   566→      setDepartments(Array.isArray(deptsData) ? deptsData : [])
+   567→
+   568→      // جلب المواد
+   569→      fetchMaterials()
+   570→      const projectIds = (Array.isArray(projectsData) ? projectsData : []).map((p: Project) => p.id)
+   571→      if (projectIds.length > 0) {
+   572→        fetchAllProjectMaterials(projectIds)
+   573→      }
+   574→
+   575→      // جلب الإشعارات
+   576→      fetchNotifications()
+   577→
+   578→      // جلب المواد المستعملة لكل مشروع
+   579→      if (projectIds.length > 0) {
+   580→        const usedResults = await Promise.allSettled(
+   581→          projectIds.map(async (pid) => {
+   582→            const res = await fetch(`/api/materials?projectId=${pid}`)
+   583→            if (res.ok) {
+   584→              const data = await res.json()
+   585→              return { pid, ums: data.usedMaterials || [] }
+   586→            }
+   587→            return { pid, ums: [] }
+   588→          })
+   589→        )
+   590→        const newUsedMap: Record<string, any[]> = {}
+   591→        usedResults.forEach(r => {
+   592→          if (r.status === 'fulfilled') {
+   593→            newUsedMap[r.value.pid] = r.value.ums
+   594→          }
+   595→        })
+   596→        setUsedMaterialsMap(newUsedMap)
+   597→      }
+   598→      
+   599→    } catch (error) {
+   600→      console.error('Error fetching data:', error)
+   601→      toast.error(t.msg_error)
+   602→      // تعيين قيم فارغة في حالة الخطأ
+   603→      setProjects([])
+   604→      setItems([])
+   605→      setDepartments([])
+   606→    } finally {
+   607→      setLoading(false)
+   608→    }
+   609→  }, [t.msg_error])
+   610→
+   611→  // Auth check - fetch current user and redirect if not authenticated
+   612→  useEffect(() => {
+   613→    const fetchUser = async () => {
+   614→      try {
+   615→        const res = await fetch('/api/auth/me')
+   616→        if (res.ok) {
+   617→          const data = await res.json()
+   618→          setCurrentUser({ id: data.user.id, name: data.user.name, email: data.user.email, phone: data.user.phone, role: data.user.role })
+   619→          // Fetch users if general_manager
+   620→          if (data.user?.role === 'general_manager') {
+   621→            try {
+   622→              const usersRes = await fetch('/api/users')
+   623→              if (usersRes.ok) {
+   624→                const usersData = await usersRes.json()
+   625→                setUsers(usersData)
+   626→              }
+   627→            } catch {}
+   628→          }
+   629→          // Auth confirmed - now fetch app data
+   630→          fetchData()
+   631→        } else {
+   632→          // Not authenticated - redirect to login
+   633→          window.location.href = '/login'
+   634→          return
+   635→        }
+   636→      } catch {
+   637→        // Error fetching user - redirect to login
+   638→        window.location.href = '/login'
+   639→        return
+   640→      } finally {
+   641→        setIsAuthChecking(false)
+   642→      }
+   643→    }
+   644→    fetchUser()
+   645→  }, [])
+   646→
+   647→  // رفع الصورة
+   648→  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
+   649→    const file = e.target.files?.[0]
+   650→    if (file) {
+   651→      const reader = new FileReader()
+   652→      reader.onloadend = () => {
+   653→        if (isEdit && editingItem) {
+   654→          setEditingItem({ ...editingItem, image: reader.result as string })
+   655→        } else {
+   656→          setNewItem(prev => ({ ...prev, image: reader.result as string }))
+   657→        }
+   658→      }
+   659→      reader.readAsDataURL(file)
+   660→    }
+   661→  }
+   662→
+   663→  // اختيار ملف للمرفق
+   664→  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+   665→    const file = e.target.files?.[0]
+   666→    if (!file) return
+   667→    
+   668→    if (file.size > 10 * 1024 * 1024) {
+   669→      toast.error(t.msg_file_too_large)
+   670→      return
+   671→    }
+   672→    
+   673→    const isImage = file.type.startsWith('image/')
+   674→    const isPDF = file.type === 'application/pdf'
+   675→    
+   676→    if (!isImage && !isPDF) {
+   677→      toast.error(t.msg_invalid_file_type)
+   678→      return
+   679→    }
+   680→    
+   681→    setSelectedFile(file)
+   682→  }
+   683→
+   684→  // رفع المرفق
+   685→  const handleUploadAttachment = async () => {
+   686→    if (!selectedFile || !selectedStageId) {
+   687→      toast.error(t.msg_select_file)
+   688→      return
+   689→    }
+   690→
+   691→    setUploadingFile(true)
+   692→    
+   693→    try {
+   694→      const reader = new FileReader()
+   695→      reader.onloadend = async () => {
+   696→        const fileType = selectedFile.type.startsWith('image/') ? 'image' : 'pdf'
+   697→        
+   698→        const res = await fetch('/api/attachments', {
+   699→          method: 'POST',
+   700→          headers: { 'Content-Type': 'application/json' },
+   701→          body: JSON.stringify({
+   702→            stageId: selectedStageId,
+   703→            fileName: selectedFile.name,
+   704→            fileType,
+   705→            fileData: reader.result as string,
+   706→            fileSize: selectedFile.size,
+   707→            description: fileDescription,
+   708→            uploadType: uploadType
+   709→          })
+   710→        })
+   711→        
+   712→        if (res.ok) {
+   713→          toast.success(t.msg_attachment_added)
+   714→          setAttachmentDialogOpen(false)
+   715→          setSelectedFile(null)
+   716→          setFileDescription('')
+   717→          setUploadType('work')
+   718→          setFileInputKey(prev => prev + 1)
+   719→          fetchData()
+   720→        } else {
+   721→          toast.error(t.msg_error)
+   722→        }
+   723→        setUploadingFile(false)
+   724→      }
+   725→      reader.readAsDataURL(selectedFile)
+   726→    } catch (error) {
+   727→      toast.error(t.msg_error)
+   728→      setUploadingFile(false)
+   729→    }
+   730→  }
+   731→
+   732→  // حذف مرفق
+   733→  const handleDeleteAttachment = async (id: string) => {
+   734→    if (!confirm(t.msg_confirm_delete_attachment)) return
+   735→    
+   736→    try {
+   737→      const res = await fetch(`/api/attachments?id=${id}`, { method: 'DELETE' })
+   738→      if (res.ok) {
+   739→        toast.success(t.msg_attachment_deleted)
+   740→        fetchData()
+   741→        if (viewingStage) {
+   742→          setViewingStage({
+   743→            ...viewingStage,
+   744→            attachments: viewingStage.attachments?.filter(a => a.id !== id) || []
+   745→          })
+   746→        }
+   747→      }
+   748→    } catch (error) {
+   749→      toast.error(t.msg_error)
+   750→    }
+   751→  }
+   752→
+   753→  // ===== إدارة المشاريع =====
+   754→  const handleAddProject = async () => {
+   755→    if (!newProject.projectDate && !newProject.name.trim()) {
+   756→      toast.error(language === 'ar' ? 'الرجاء إدخال تاريخ المشروع أو اسم المشروع' : 'Please enter project date or name')
+   757→      return
+   758→    }
+   759→
+   760→    try {
+   761→      const projectData = {
+   762→        ...newProject,
+   763→        notesAuthor: currentUser?.name || ''
+   764→      }
+   765→      const res = await fetch('/api/projects', {
+   766→        method: 'POST',
+   767→        headers: { 'Content-Type': 'application/json' },
+   768→        body: JSON.stringify(projectData)
+   769→      })
+   770→      
+   771→      if (res.ok) {
+   772→        toast.success(language === 'ar' ? 'تم إضافة المشروع' : 'Project added')
+   773→        setAddProjectOpen(false)
+   774→        setNewProject({ name: '', nameAr: '', projectDate: '', location: '', recipient: '', executiveManager: '', clientName: '', description: '', image: '', notes: '', notesAuthor: currentUser?.name || '', startDate: '', endDate: '', deadline: '' })
+   775→        fetchData()
+   776→      } else {
+   777→        const errorData = await res.json().catch(() => ({}))
+   778→        console.error('Error response:', errorData)
+   779→        toast.error(errorData.error || (language === 'ar' ? 'فشل في إضافة المشروع' : 'Failed to add project'))
+   780→      }
+   781→    } catch (error) {
+   782→      console.error('Error adding project:', error)
+   783→      toast.error(t.msg_error)
+   784→    }
+   785→  }
+   786→
+   787→  const handleEditProject = async () => {
+   788→    if (!editingProject) return
+   789→    
+   790→    try {
+   791→      const updateData = {
+   792→        ...editingProject,
+   793→        notesAuthor: editingProject.notesAuthor || currentUser?.name || ''
+   794→      }
+   795→      const res = await fetch('/api/projects', {
+   796→        method: 'PUT',
+   797→        headers: { 'Content-Type': 'application/json' },
+   798→        body: JSON.stringify(updateData)
+   799→      })
+   800→      
+   801→      if (res.ok) {
+   802→        toast.success(t.msg_item_updated)
+   803→        setEditProjectOpen(false)
+   804→        setEditingProject(null)
+   805→        fetchData()
+   806→      }
+   807→    } catch (error) {
+   808→      toast.error(t.msg_error)
+   809→    }
+   810→  }
+   811→
+   812→  const handleDeleteProject = async (id: string) => {
+   813→    if (!confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذا المشروع؟ سيتم حذف جميع العناصر المرتبطة به.' : 'Delete this project and all its items?')) return
+   814→    
+   815→    try {
+   816→      const res = await fetch(`/api/projects?id=${id}`, { method: 'DELETE' })
+   817→      if (res.ok) {
+   818→        toast.success(language === 'ar' ? 'تم حذف المشروع' : 'Project deleted')
+   819→        fetchData()
+   820→      }
+   821→    } catch (error) {
+   822→      toast.error(t.msg_error)
+   823→    }
+   824→  }
+   825→
+   826→  // إضافة عنصر
+   827→  const handleAddItem = async () => {
+   828→    if (!newItem.name.trim()) {
+   829→      toast.error(t.msg_enter_name)
+   830→      return
+   831→    }
+   832→
+   833→    try {
+   834→      const res = await fetch('/api/items', {
+   835→        method: 'POST',
+   836→        headers: { 'Content-Type': 'application/json' },
+   837→        body: JSON.stringify({ ...newItem, stages: newStages, projectId: newItem.projectId || null })
+   838→      })
+   839→      
+   840→      if (res.ok) {
+   841→        toast.success(t.msg_item_added)
+   842→        setAddItemOpen(false)
+   843→        setNewItem({ name: '', image: '', priority: 1, notes: '', totalQuantity: 1, deadline: '', projectId: '' })
+   844→        setNewStages([])
+   845→        fetchData()
+   846→      } else {
+   847→        const errData = await res.json().catch(() => ({}))
+   848→        toast.error(errData.error || t.msg_error)
+   849→      }
+   850→    } catch (error) {
+   851→      toast.error(t.msg_error)
+   852→    }
+   853→  }
+   854→
+   855→  // تعديل عنصر
+   856→  const handleEditItem = async () => {
+   857→    if (!editingItem) return
+   858→    
+   859→    try {
+   860→      const res = await fetch('/api/items', {
+   861→        method: 'PUT',
+   862→        headers: { 'Content-Type': 'application/json' },
+   863→        body: JSON.stringify({
+   864→          id: editingItem.id, name: editingItem.name, image: editingItem.image,
+   865→          priority: editingItem.priority, notes: editingItem.notes,
+   866→          totalQuantity: editingItem.totalQuantity, deadline: editingItem.deadline,
+   867→          projectId: editingItem.projectId
+   868→        })
+   869→      })
+   870→      
+   871→      if (res.ok) {
+   872→        toast.success(t.msg_item_updated)
+   873→        setEditItemOpen(false)
+   874→        setEditingItem(null)
+   875→        fetchData()
+   876→      }
+   877→    } catch (error) {
+   878→      toast.error(t.msg_error)
+   879→    }
+   880→  }
+   881→
+   882→  // حذف عنصر
+   883→  const handleDeleteItem = async (id: string) => {
+   884→    if (!confirm(t.msg_confirm_delete)) return
+   885→    
+   886→    try {
+   887→      const res = await fetch(`/api/items?id=${id}`, { method: 'DELETE' })
+   888→      if (res.ok) {
+   889→        toast.success(t.msg_item_deleted)
+   890→        fetchData()
+   891→      }
+   892→    } catch (error) {
+   893→      toast.error(t.msg_error)
+   894→    }
+   895→  }
+   896→
+   897→  // تحديث حالة العنصر
+   898→  const handleUpdateItemStatus = async (id: string, status: string) => {
+   899→    try {
+   900→      const res = await fetch('/api/items', {
+   901→        method: 'PUT',
+   902→        headers: { 'Content-Type': 'application/json' },
+   903→        body: JSON.stringify({ id, status })
+   904→      })
+   905→      if (res.ok) {
+   906→        toast.success(t.msg_item_updated)
+   907→        fetchData()
+   908→      }
+   909→    } catch (error) {
+   910→      toast.error(t.msg_error)
+   911→    }
+   912→  }
+   913→
+   914→  // تحديث أولوية العنصر
+   915→  const handleUpdatePriority = async (id: string, direction: 'up' | 'down') => {
+   916→    const item = items.find(i => i.id === id)
+   917→    if (!item) return
+   918→    
+   919→    const newPriority = direction === 'up' ? Math.max(1, item.priority - 1) : item.priority + 1
+   920→    
+   921→    try {
+   922→      const res = await fetch('/api/items', {
+   923→        method: 'PUT',
+   924→        headers: { 'Content-Type': 'application/json' },
+   925→        body: JSON.stringify({ id, priority: newPriority })
+   926→      })
+   927→      if (res.ok) fetchData()
+   928→    } catch (error) {
+   929→      toast.error(t.msg_error)
+   930→    }
+   931→  }
+   932→
+   933→  // إضافة مرحلة
+   934→  const handleAddStage = async () => {
+   935→    if (!selectedItemId || !newStage.departmentId) {
+   936→      toast.error(t.msg_select_department)
+   937→      return
+   938→    }
+   939→
+   940→    try {
+   941→      const res = await fetch('/api/stages', {
+   942→        method: 'POST',
+   943→        headers: { 'Content-Type': 'application/json' },
+   944→        body: JSON.stringify({ itemId: selectedItemId, ...newStage })
+   945→      })
+   946→      
+   947→      if (res.ok) {
+   948→        toast.success(t.msg_stage_added)
+   949→        setAddStageOpen(false)
+   950→        setNewStage({
+   951→          departmentId: '', timePerUnit: 0, quantity: 1, shifts: 1, notes: '',
+   952→          shift1Start: '08:00', shift1End: '16:00', shift2Start: '', shift2End: ''
+   953→        })
+   954→        fetchData()
+   955→      }
+   956→    } catch (error) {
+   957→      toast.error(t.msg_error)
+   958→    }
+   959→  }
+   960→
+   961→  // تعديل مرحلة
+   962→  const handleEditStage = async () => {
+   963→    if (!editingStage) return
+   964→    
+   965→    try {
+   966→      const res = await fetch('/api/stages', {
+   967→        method: 'PUT',
+   968→        headers: { 'Content-Type': 'application/json' },
+   969→        body: JSON.stringify({
+   970→          id: editingStage.id, departmentId: editingStage.departmentId,
+   971→          timePerUnit: editingStage.timePerUnit, quantity: editingStage.quantity,
+   972→          estimatedTime: editingStage.estimatedTime, shifts: editingStage.shifts,
+   973→          shift1Start: editingStage.shift1Start, shift1End: editingStage.shift1End,
+   974→          shift2Start: editingStage.shift2Start, shift2End: editingStage.shift2End,
+   975→          notes: editingStage.notes, startDate: editingStage.startDate, endDate: editingStage.endDate
+   976→        })
+   977→      })
+   978→      
+   979→      if (res.ok) {
+   980→        toast.success(t.msg_item_updated)
+   981→        setEditStageOpen(false)
+   982→        setEditingStage(null)
+   983→        fetchData()
+   984→      }
+   985→    } catch (error) {
+   986→      toast.error(t.msg_error)
+   987→    }
+   988→  }
+   989→
+   990→  // حذف مرحلة
+   991→  const handleDeleteStage = async (id: string) => {
+   992→    if (!confirm(t.msg_confirm_delete_stage)) return
+   993→    
+   994→    try {
+   995→      const res = await fetch(`/api/stages?id=${id}`, { method: 'DELETE' })
+   996→      if (res.ok) {
+   997→        toast.success(t.msg_stage_deleted)
+   998→        fetchData()
+   999→      }
+  1000→    } catch (error) {
+  1001→      toast.error(t.msg_error)
+  1002→    }
+  1003→  }
+  1004→
+  1005→  // تحديث حالة المرحلة
+  1006→  const handleUpdateStageStatus = async (id: string, status: string) => {
+  1007→    try {
+  1008→      const res = await fetch('/api/stages', {
+  1009→        method: 'PUT',
+  1010→        headers: { 'Content-Type': 'application/json' },
+  1011→        body: JSON.stringify({ id, status })
+  1012→      })
+  1013→      if (res.ok) {
+  1014→        toast.success(t.msg_item_updated)
+  1015→        fetchData()
+  1016→      }
+  1017→    } catch (error) {
+  1018→      toast.error(t.msg_error)
+  1019→    }
+  1020→  }
+  1021→
+  1022→  // إضافة قسم
+  1023→  const handleAddDepartment = async () => {
+  1024→    if (!newDept.name || !newDept.nameAr) {
+  1025→      toast.error(language === 'ar' ? 'الرجاء إدخال اسم القسم' : 'Please enter department name')
+  1026→      return
+  1027→    }
+  1028→
+  1029→    try {
+  1030→      const res = await fetch('/api/departments', {
+  1031→        method: 'POST',
+  1032→        headers: { 'Content-Type': 'application/json' },
+  1033→        body: JSON.stringify(newDept)
+  1034→      })
+  1035→      
+  1036→      if (res.ok) {
+  1037→        toast.success(language === 'ar' ? 'تم إضافة القسم' : 'Department added')
+  1038→        setAddDeptOpen(false)
+  1039→        setNewDept({ name: '', nameAr: '', color: '#6B7280', icon: 'settings' })
+  1040→        fetchData()
+  1041→      }
+  1042→    } catch (error) {
+  1043→      toast.error(t.msg_error)
+  1044→    }
+  1045→  }
+  1046→
+  1047→  // تعديل قسم
+  1048→  const handleEditDepartment = async () => {
+  1049→    if (!editingDept) return
+  1050→    
+  1051→    try {
+  1052→      const res = await fetch('/api/departments', {
+  1053→        method: 'PUT',
+  1054→        headers: { 'Content-Type': 'application/json' },
+  1055→        body: JSON.stringify(editingDept)
+  1056→      })
+  1057→      
+  1058→      if (res.ok) {
+  1059→        toast.success(t.msg_item_updated)
+  1060→        setEditDeptOpen(false)
+  1061→        setEditingDept(null)
+  1062→        fetchData()
+  1063→      }
+  1064→    } catch (error) {
+  1065→      toast.error(t.msg_error)
+  1066→    }
+  1067→  }
+  1068→
+  1069→  // حذف قسم
+  1070→  const handleDeleteDepartment = async (id: string) => {
+  1071→    if (!confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذا القسم؟' : 'Are you sure?')) return
+  1072→    
+  1073→    try {
+  1074→      const res = await fetch(`/api/departments?id=${id}`, { method: 'DELETE' })
+  1075→      
+  1076→      if (res.ok) {
+  1077→        toast.success(language === 'ar' ? 'تم حذف القسم' : 'Department deleted')
+  1078→        fetchData()
+  1079→      } else {
+  1080→        const data = await res.json()
+  1081→        if (data.stagesCount) {
+  1082→          toast.error(language === 'ar' 
+  1083→            ? `لا يمكن حذف القسم - يوجد ${data.stagesCount} مرحلة مرتبطة` 
+  1084→            : `Cannot delete - ${data.stagesCount} stages linked`)
+  1085→        }
+  1086→      }
+  1087→    } catch (error) {
+  1088→      toast.error(t.msg_error)
+  1089→    }
+  1090→  }
+  1091→
+  1092→  // جلب المستخدمين
+  1093→  const fetchUsers = async () => {
+  1094→    try {
+  1095→      const res = await fetch('/api/users')
+  1096→      if (res.ok) {
+  1097→        const data = await res.json()
+  1098→        setUsers(data)
+  1099→      }
+  1100→    } catch (error) {
+  1101→      console.error('Error fetching users:', error)
+  1102→    }
+  1103→  }
+  1104→
+  1105→  const handleToggleUserRole = async (user: any) => {
+  1106→    try {
+  1107→      const newRole = user.role === 'admin' ? 'user' : 'admin'
+  1108→      const res = await fetch('/api/users', {
+  1109→        method: 'PUT',
+  1110→        headers: { 'Content-Type': 'application/json' },
+  1111→        body: JSON.stringify({ id: user.id, role: newRole })
+  1112→      })
+  1113→      if (res.ok) {
+  1114→        toast.success(language === 'ar' ? 'تم تحديث الدور' : 'Role updated')
+  1115→        fetchUsers()
+  1116→      }
+  1117→    } catch (error) {
+  1118→      toast.error(t.msg_error)
+  1119→    }
+  1120→  }
+  1121→
+  1122→  const handleToggleUserStatus = async (user: any) => {
+  1123→    try {
+  1124→      const newStatus = user.status === 'suspended' ? 'active' : 'suspended'
+  1125→      const res = await fetch('/api/users', {
+  1126→        method: 'PUT',
+  1127→        headers: { 'Content-Type': 'application/json' },
+  1128→        body: JSON.stringify({ id: user.id, status: newStatus })
+  1129→      })
+  1130→      if (res.ok) {
+  1131→        toast.success(language === 'ar' ? 'تم تحديث الحالة' : 'Status updated')
+  1132→        fetchUsers()
+  1133→      }
+  1134→    } catch (error) {
+  1135→      toast.error(t.msg_error)
+  1136→    }
+  1137→  }
+  1138→
+  1139→  const handleDeleteUser = async (userId: string) => {
+  1140→    if (!confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذا المستخدم؟' : 'Are you sure you want to delete this user?')) return
+  1141→    try {
+  1142→      const res = await fetch(`/api/users?id=${userId}`, { method: 'DELETE' })
+  1143→      if (res.ok) {
+  1144→        toast.success(language === 'ar' ? 'تم حذف المستخدم' : 'User deleted')
+  1145→        fetchUsers()
+  1146→      }
+  1147→    } catch (error) {
+  1148→      toast.error(t.msg_error)
+  1149→    }
+  1150→  }
+  1151→
+  1152→  // تصدير Excel أو PDF (عام أو حسب المشروع)
+  1153→  const handleExport = async (projectId?: string, format: 'xlsx' | 'html' = 'xlsx') => {
+  1154→    try {
+  1155→      let url = '/api/export'
+  1156→      const params = new URLSearchParams()
+  1157→      if (projectId) params.append('projectId', projectId)
+  1158→      if (format === 'html') params.append('format', 'pdf')
+  1159→      if (params.toString()) url += `?${params.toString()}`
+  1160→      
+  1161→      const res = await fetch(url)
+  1162→      if (res.ok) {
+  1163→        const blob = await res.blob()
+  1164→        const downloadUrl = window.URL.createObjectURL(blob)
+  1165→        const a = document.createElement('a')
+  1166→        a.href = downloadUrl
+  1167→        
+  1168→        // استخراج اسم الملف من header
+  1169→        const contentDisposition = res.headers.get('Content-Disposition')
+  1170→        const defaultFilename = format === 'html' 
+  1171→          ? `alwan-al-khaleej-report-${new Date().toISOString().split('T')[0]}.html`
+  1172→          : `alwan-al-khaleej-report-${new Date().toISOString().split('T')[0]}.xlsx`
+  1173→        let filename = defaultFilename
+  1174→        if (contentDisposition) {
+  1175→          const filenameMatch = contentDisposition.match(/filename\*?=['"]?(?:UTF-\d['"]*)?([^;'"{}]+)/i)
+  1176→          if (filenameMatch && filenameMatch[1]) {
+  1177→            filename = decodeURIComponent(filenameMatch[1])
+  1178→          }
+  1179→        }
+  1180→        
+  1181→        a.download = filename
+  1182→        document.body.appendChild(a)
+  1183→        a.click()
+  1184→        document.body.removeChild(a)
+  1185→        window.URL.revokeObjectURL(downloadUrl)
+  1186→        const formatName = format === 'html' ? 'PDF (English)' : 'Excel'
+  1187→        toast.success(language === 'ar' ? `تم تصدير البيانات كـ ${formatName}` : `Data exported as ${formatName}`)
+  1188→      }
+  1189→    } catch (error) {
+  1190→      toast.error(t.msg_error)
+  1191→    }
+  1192→  }
+  1193→
+  1194→  // تنسيق التاريخ
+  1195→  const formatDate = (date: Date | string | undefined) => {
+  1196→    if (!date) return '-'
+  1197→    const d = new Date(date)
+  1198→    return d.toLocaleDateString('en-US', {
+  1199→      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  1200→    })
+  1201→  }
+  1202→
+  1203→  // الحصول على اسم القسم
+  1204→  const getDepartmentName = (dept: Department) => language === 'ar' ? dept.nameAr : dept.name
+  1205→
+  1206→  // تسميات الحالة
+  1207→  const getStatusLabel = (status: string) => {
+  1208→    switch (status) {
+  1209→      case 'pending': return t.status_pending
+  1210→      case 'in_progress': return t.status_in_progress
+  1211→      case 'completed': return t.status_completed
+  1212→      default: return status
+  1213→    }
+  1214→  }
+  1215→
+  1216→  // اسم عرض المشروع (من التاريخ أو الاسم)
+  1217→  const getProjectDisplayName = (project: Project) => {
+  1218→    if (project.projectDate) {
+  1219→      const d = new Date(project.projectDate)
+  1220→      return d.toLocaleDateString('en-US', {
+  1221→        year: 'numeric', month: 'long', day: 'numeric'
+  1222→      })
+  1223→    }
+  1224→    return project.nameAr || project.name
+  1225→  }
+  1226→
+  1227→  // الحرف الأول للمشروع
+  1228→  const getProjectInitial = (project: Project) => {
+  1229→    if (project.projectDate) {
+  1230→      const d = new Date(project.projectDate)
+  1231→      return String(d.getDate()).padStart(2, '0')
+  1232→    }
+  1233→    return project.nameAr?.charAt(0) || project.name.charAt(0)
+  1234→  }
+  1235→
+  1236→  // حساب الإحصائيات للجدول الزمني
+  1237→  const calculateStats = () => {
+  1238→    const safeItems = Array.isArray(items) ? items : []
+  1239→    const allStages = safeItems.flatMap(item => Array.isArray(item.stages) ? item.stages : [])
+  1240→    const totalStages = allStages.length
+  1241→    const completedStages = allStages.filter(s => s?.status === 'completed').length
+  1242→    const inProgressStages = allStages.filter(s => s?.status === 'in_progress').length
+  1243→    const pendingStages = allStages.filter(s => s?.status === 'pending').length
+  1244→    const totalEstimatedTime = allStages.reduce((sum, s) => sum + (s?.estimatedTime || 0), 0)
+  1245→    
+  1246→    return { totalStages, completedStages, inProgressStages, pendingStages, totalEstimatedTime,
+  1247→      progress: totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0 }
+  1248→  }
+  1249→
+  1250→  // Auth check must come FIRST - before any data-dependent rendering
+  1251→  if (isAuthChecking) {
+  1252→    return (
+  1253→      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100">
+  1254→        <div className="text-center">
+  1255→          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
+  1256→          <p className="text-amber-700 font-medium">{language === 'ar' ? 'جاري التحقق...' : 'Authenticating...'}</p>
+  1257→        </div>
+  1258→      </div>
+  1259→    )
+  1260→  }
+  1261→
+  1262→  // Data loading check comes after auth
+  1263→  if (loading) {
+  1264→    return (
+  1265→      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-100">
+  1266→        <div className="text-center">
+  1267→          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
+  1268→          <p className="text-amber-800 font-medium">{language === 'ar' ? 'جاري التحميل...' : 'Loading...'}</p>
+  1269→        </div>
+  1270→      </div>
+  1271→    )
+  1272→  }
+  1273→
+  1274→  // Safely calculate stats with error handling
+  1275→  let stats
+  1276→  try {
+  1277→    stats = calculateStats()
+  1278→  } catch (error) {
+  1279→    console.error('Error calculating stats:', error)
+  1280→    stats = { totalStages: 0, completedStages: 0, inProgressStages: 0, pendingStages: 0, totalEstimatedTime: 0, progress: 0 }
+  1281→  }
+  1282→
+  1283→  return (
+  1284→    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100" dir={isRTL ? 'rtl' : 'ltr'}>
+  1285→      {/* الهيدر */}
+  1286→      <header className="bg-white/80 backdrop-blur-sm border-b border-amber-200 sticky top-0 z-50 print:hidden">
+  1287→        <div className="container mx-auto px-4 py-4">
+  1288→          <div className="flex items-center justify-between flex-wrap gap-4">
+  1289→            <div className="flex items-center gap-3">
+  1290→              <img src="/logo.png" alt="الوان الخليج" className="w-12 h-12 rounded-xl object-contain" />
+  1291→              <div>
+  1292→                <h1 className="text-2xl font-bold text-amber-900">الوان الخليج</h1>
+  1293→                <p className="text-sm text-amber-700">{language === 'ar' ? 'نظام إدارة تصنيع ديكور الأعراس' : 'Wedding Decor Management System'} <span className="text-xs bg-amber-200 px-2 py-0.5 rounded">v3.0</span></p>
+  1294→              </div>
+  1295→            </div>
+  1296→            <div className="flex items-center gap-2 flex-wrap">
+  1297→              <div className="flex items-center gap-1 bg-white rounded-lg border p-1">
+  1298→                <Button variant={language === 'ar' ? 'default' : 'ghost'} size="sm"
+  1299→                  onClick={() => setLanguage('ar')}
+  1300→                  className={`gap-1 ${language === 'ar' ? 'bg-amber-500 hover:bg-amber-600' : ''}`}>
+  1301→                  <Globe className="w-4 h-4" /> عربي
+  1302→                </Button>
+  1303→                <Button variant={language === 'en' ? 'default' : 'ghost'} size="sm"
+  1304→                  onClick={() => setLanguage('en')}
+  1305→                  className={`gap-1 ${language === 'en' ? 'bg-amber-500 hover:bg-amber-600' : ''}`}>
+  1306→                  <Globe className="w-4 h-4" /> EN
+  1307→                </Button>
+  1308→              </div>
+  1309→              <Button onClick={() => handleExport(undefined, 'xlsx')} variant="outline" className="gap-2 bg-green-50 hover:bg-green-100 border-green-300 text-green-700">
+  1310→                <Download className="w-4 h-4" /> {language === 'ar' ? 'تصدير Excel' : 'Export Excel'}
+  1311→              </Button>
+  1312→              <Button onClick={() => handleExport(undefined, 'html')} variant="outline" className="gap-2 bg-red-50 hover:bg-red-100 border-red-300 text-red-700">
+  1313→                <Download className="w-4 h-4" /> PDF
+  1314→              </Button>
+  1315→              <Button onClick={() => window.print()} variant="outline" className="gap-2">
+  1316→                <Printer className="w-4 h-4" /> {t.btn_print}
+  1317→              </Button>
+  1318→              {currentUser && (
+  1319→                <div className="flex items-center gap-2">
+  1320→                  {/* زر الدردشة */}
+  1321→                  <Button
+  1322→                    variant={chatOpen ? 'default' : 'outline'}
+  1323→                    size="sm"
+  1324→                    onClick={() => setChatOpen(!chatOpen)}
+  1325→                    className={`gap-1 relative ${chatOpen ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'text-amber-700 border-amber-300 hover:bg-amber-50'}`}
+  1326→                  >
+  1327→                    <MessageCircle className="w-4 h-4" />
+  1328→                    {language === 'ar' ? 'الدردشة' : 'Chat'}
+  1329→                  </Button>
+  1330→                  {/* إشعارات ومساعدة */}
+  1331→                  <div className="flex items-center gap-2">
+  1332→                    {/* زر المساعدة */}
+  1333→                    <Button
+  1334→                      variant="outline"
+  1335→                      size="sm"
+  1336→                      onClick={() => setHelpOpen(true)}
+  1337→                      className="gap-1 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white border-blue-600 hover:border-blue-700 shadow-md hover:shadow-lg transition-all duration-200"
+  1338→                      title={language === 'ar' ? 'مركز المساعدة - ابحث عن أي مشكلة وحلها' : 'Help Center - Search for any problem and solution'}
+  1339→                    >
+  1340→                      <HelpCircle className="w-4 h-4" />
+  1341→                      <span className="font-bold">?</span>
+  1342→                    </Button>
+  1343→                    {/* جرس الإشعارات */}
+  1344→                    {(currentUser.role === 'general_manager' || currentUser.role === 'executive_manager') && (
+  1345→                      <div className="relative">
+  1346→                        <Button variant="outline" size="sm" onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) fetchNotifications() }} className="gap-1 relative">
+  1347→                          🔔
+  1348→                          {unreadNotifications > 0 && (
+  1349→                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">{unreadNotifications}</span>
+  1350→                          )}
+  1351→                        </Button>
+  1352→                        {showNotifications && (
+  1353→                          <div className="absolute top-full mt-2 w-80 bg-white border rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto" style={{ left: 0 }}>
+  1354→                            <div className="flex justify-between items-center p-3 border-b">
+  1355→                              <h3 className="font-bold text-sm">{language === 'ar' ? 'الإشعارات' : 'Notifications'}</h3>
+  1356→                              <Button variant="ghost" size="sm" onClick={async () => { await fetch('/api/notifications', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'markAllRead'}) }); fetchNotifications() }}>
+  1357→                                {language === 'ar' ? 'قراءة الكل' : 'Mark all read'}
+  1358→                              </Button>
+  1359→                            </div>
+  1360→                            {notifications.length === 0 ? (
+  1361→                              <p className="p-4 text-center text-gray-400 text-sm">{language === 'ar' ? 'لا توجد إشعارات' : 'No notifications'}</p>
+  1362→                            ) : notifications.map(n => (
+  1363→                              <div key={n.id} className={`p-3 border-b hover:bg-gray-50 ${!n.isRead ? 'bg-blue-50' : ''}`}>
+  1364→                                <p className="font-medium text-sm">{n.title}</p>
+  1365→                                <p className="text-xs text-gray-500 mt-1">{n.message}</p>
+  1366→                                <p className="text-xs text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString('en-US')}</p>
+  1367→                              </div>
+  1368→                            ))}
+  1369→                          </div>
+  1370→                        )}
+  1371→                      </div>
+  1372→                    )}
+  1373→                  </div>
+  1374→                  <div className="flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg text-sm">
+  1375→                    <User className="w-4 h-4" />
+  1376→                    <span className="font-medium">{currentUser.name}</span>
+  1377→                    <span className="text-xs opacity-70">({currentUser.role === 'general_manager' ? 'مدير عام' : currentUser.role === 'executive_manager' ? 'مسؤول تنفيذي' : currentUser.role === 'store_keeper' ? 'ستور كيبر' : 'مشرف'})</span>
+  1378→                  </div>
+  1379→                  <Button onClick={handleLogout} variant="outline" size="sm" className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
+  1380→                    <LogOut className="w-4 h-4" />
+  1381→                    {language === 'ar' ? 'خروج' : 'Logout'}
+  1382→                  </Button>
+  1383→                </div>
+  1384→              )}
+  1385→            </div>
+  1386→          </div>
+  1387→        </div>
+  1388→      </header>
+  1389→
+  1390→      {/* المحتوى الرئيسي */}
+  1391→      <main className="container mx-auto px-4 py-6">
+  1392→        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+  1393→          <TabsList className="bg-white/80 backdrop-blur-sm p-1 rounded-lg shadow-sm print:hidden flex flex-wrap">
+  1394→            <TabsTrigger value="projects" className="gap-2"><FolderOpen className="w-4 h-4" /> {language === 'ar' ? 'المشاريع' : 'Projects'}</TabsTrigger>
+  1395→            <TabsTrigger value="materials" className="gap-2"><Box className="w-4 h-4" /> {t.nav_materials}</TabsTrigger>
+  1396→            <TabsTrigger value="items" className="gap-2"><Package className="w-4 h-4" /> {t.nav_items}</TabsTrigger>
+  1397→            <TabsTrigger value="stages" className="gap-2"><Settings className="w-4 h-4" /> {t.nav_stages}</TabsTrigger>
+  1398→            <TabsTrigger value="schedule" className="gap-2"><Calendar className="w-4 h-4" /> {t.nav_schedule}</TabsTrigger>
+  1399→            <TabsTrigger value="charts" className="gap-2"><BarChart3 className="w-4 h-4" /> {language === 'ar' ? 'الرسوم البيانية' : 'Charts'}</TabsTrigger>
+  1400→            <TabsTrigger value="departments" className="gap-2"><Users className="w-4 h-4" /> {t.nav_departments}</TabsTrigger>
+  1401→            {currentUser?.role === 'general_manager' && (
+  1402→              <TabsTrigger value="users" className="gap-2">
+  1403→                <Users className="w-4 h-4" /> {language === 'ar' ? 'المستخدمين' : 'Users'}
+  1404→              </TabsTrigger>
+  1405→            )}
+  1406→          </TabsList>
+  1407→
+  1408→          {/* تبويب المشاريع */}
+  1409→          <TabsContent value="projects" className="space-y-4">
+  1410→            <div className="flex justify-between items-center print:hidden">
+  1411→              <div className="flex items-center gap-3">
+  1412→                <h2 className="text-xl font-bold text-amber-900">{language === 'ar' ? 'المشاريع' : 'Projects'} ({projects.length})</h2>
+  1413→                {/* تبديل وضع العرض */}
+  1414→                <div className="flex items-center bg-white rounded-lg border border-amber-200 p-0.5">
+  1415→                  <Button variant={projectViewMode === 'grid' ? 'default' : 'ghost'} size="sm" className="h-7 w-7 p-0" onClick={() => setProjectViewMode('grid')} title={language === 'ar' ? 'شبكة' : 'Grid'}>
+  1416→                    <LayoutGrid className="w-4 h-4" />
+  1417→                  </Button>
+  1418→                  <Button variant={projectViewMode === 'list' ? 'default' : 'ghost'} size="sm" className="h-7 w-7 p-0" onClick={() => setProjectViewMode('list')} title={language === 'ar' ? 'قائمة' : 'List'}>
+  1419→                    <List className="w-4 h-4" />
+  1420→                  </Button>
+  1421→                  <Button variant={projectViewMode === 'gallery' ? 'default' : 'ghost'} size="sm" className="h-7 w-7 p-0" onClick={() => setProjectViewMode('gallery')} title={language === 'ar' ? 'معرض صور' : 'Gallery'}>
+  1422→                    <ImageIcon className="w-4 h-4" />
+  1423→                  </Button>
+  1424→                </div>
+  1425→              </div>
+  1426→              <Dialog open={addProjectOpen} onOpenChange={setAddProjectOpen}>
+  1427→                {currentUser?.role !== 'store_keeper' && (
+  1428→                <DialogTrigger asChild>
+  1429→                  <Button className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">
+  1430→                    <Plus className="w-4 h-4" /> {language === 'ar' ? 'إضافة مشروع' : 'Add Project'}
+  1431→                  </Button>
+  1432→                </DialogTrigger>
+  1433→                )}
+  1434→                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+  1435→                  <DialogHeader><DialogTitle>{language === 'ar' ? 'إضافة مشروع جديد' : 'Add New Project'}</DialogTitle></DialogHeader>
+  1436→                  <div className="space-y-4">
+  1437→                    {/* تاريخ المشروع */}
+  1438→                    <div className="grid grid-cols-2 gap-4">
+  1439→                      <div className="space-y-2">
+  1440→                        <Label className="text-amber-800 font-semibold">{language === 'ar' ? 'تاريخ المشروع' : 'Project Date'} *</Label>
+  1441→                        <Input type="date" value={newProject.projectDate} onChange={(e) => setNewProject(prev => ({ ...prev, projectDate: e.target.value }))} className="border-amber-300" />
+  1442→                      </div>
+  1443→                      <div className="space-y-2">
+  1444→                        <Label className="text-amber-800 font-semibold">{language === 'ar' ? 'مكان المشروع' : 'Project Location'}</Label>
+  1445→                        <Input value={newProject.location} onChange={(e) => setNewProject(prev => ({ ...prev, location: e.target.value }))} placeholder={language === 'ar' ? 'أدخل مكان المشروع' : 'Enter project location'} className="border-amber-300" />
+  1446→                      </div>
+  1447→                    </div>
+  1448→                    {/* المستقبل والمسؤول التنفيذي */}
+  1449→                    <div className="grid grid-cols-2 gap-4">
+  1450→                      <div className="space-y-2">
+  1451→                        <Label className="text-amber-800 font-semibold">{language === 'ar' ? 'شخص المستقبل المشروع' : 'Project Recipient'}</Label>
+  1452→                        <Input value={newProject.recipient} onChange={(e) => setNewProject(prev => ({ ...prev, recipient: e.target.value }))} placeholder={language === 'ar' ? 'اسم مستقبل المشروع' : 'Recipient name'} className="border-amber-300" />
+  1453→                      </div>
+  1454→                      <div className="space-y-2">
+  1455→                        <Label className="text-amber-800 font-semibold">{language === 'ar' ? 'المسؤول التنفيذي' : 'Executive Manager'}</Label>
+  1456→                        <Input value={newProject.executiveManager} onChange={(e) => setNewProject(prev => ({ ...prev, executiveManager: e.target.value }))} placeholder={language === 'ar' ? 'اسم المسؤول التنفيذي' : 'Executive manager name'} className="border-amber-300" />
+  1457→                      </div>
+  1458→                    </div>
+  1459→                    {/* اسم العميل */}
+  1460→                    <div className="space-y-2">
+  1461→                      <Label className="text-amber-800">{language === 'ar' ? 'اسم العميل' : 'Client Name'}</Label>
+  1462→                      <Input value={newProject.clientName} onChange={(e) => setNewProject(prev => ({ ...prev, clientName: e.target.value }))} placeholder={language === 'ar' ? 'اسم العميل' : 'Client name'} />
+  1463→                    </div>
+  1464→                    {/* تاريخي التنفيذ */}
+  1465→                    <div className="grid grid-cols-2 gap-4">
+  1466→                      <div className="space-y-2">
+  1467→                        <Label className="text-blue-800 font-semibold">{language === 'ar' ? 'تاريخ بداية التنفيذ' : 'Execution Start Date'}</Label>
+  1468→                        <Input type="date" value={newProject.startDate} onChange={(e) => setNewProject(prev => ({ ...prev, startDate: e.target.value }))} className="border-blue-300" />
+  1469→                      </div>
+  1470→                      <div className="space-y-2">
+  1471→                        <Label className="text-blue-800 font-semibold">{language === 'ar' ? 'تاريخ نهاية التنفيذ' : 'Execution End Date'}</Label>
+  1472→                        <Input type="date" value={newProject.endDate} onChange={(e) => setNewProject(prev => ({ ...prev, endDate: e.target.value }))} className="border-blue-300" />
+  1473→                      </div>
+  1474→                    </div>
+  1475→                    {/* الموعد النهائي */}
+  1476→                    <div className="space-y-2">
+  1477→                      <Label className="text-amber-800">{language === 'ar' ? 'الموعد النهائي' : 'Deadline'}</Label>
+  1478→                      <Input type="date" value={newProject.deadline} onChange={(e) => setNewProject(prev => ({ ...prev, deadline: e.target.value }))} />
+  1479→                    </div>
+  1480→                    {/* ملاحظات مع كاتب الملاحظات */}
+  1481→                    <div className="space-y-2">
+  1482→                      <Label className="text-amber-800">{language === 'ar' ? 'ملاحظات' : 'Notes'}</Label>
+  1483→                      <Textarea value={newProject.notes} onChange={(e) => setNewProject(prev => ({ ...prev, notes: e.target.value }))} rows={2} placeholder={language === 'ar' ? 'أدخل الملاحظات' : 'Enter notes'} />
+  1484→                      {currentUser && (
+  1485→                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+  1486→                          <User className="w-3 h-3" />
+  1487→                          {language === 'ar' ? `كاتب الملاحظات: ${currentUser.name}` : `Notes by: ${currentUser.name}`}
+  1488→                        </p>
+  1489→                      )}
+  1490→                    </div>
+  1491→                    {/* صورة المشروع */}
+  1492→                    <div className="space-y-2">
+  1493→                      <Label className="text-amber-800">{language === 'ar' ? 'صورة المشروع' : 'Project Image'}</Label>
+  1494→                      <Input type="file" accept="image/*" onChange={(e) => {
+  1495→                        const file = e.target.files?.[0]
+  1496→                        if (file) {
+  1497→                          const reader = new FileReader()
+  1498→                          reader.onloadend = () => {
+  1499→                            setNewProject(prev => ({ ...prev, image: reader.result as string }))
+  1500→                          }
+  1501→                          reader.readAsDataURL(file)
+  1502→                        }
+  1503→                      }} />
+  1504→                      {newProject.image && <img src={newProject.image} alt="preview" className="w-20 h-20 object-cover rounded-lg border mt-2" />}
+  1505→                    </div>
+  1506→                  </div>
+  1507→                  <DialogFooter>
+  1508→                    <Button variant="outline" onClick={() => setAddProjectOpen(false)}>{t.btn_cancel}</Button>
+  1509→                    <Button onClick={handleAddProject} className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">{t.btn_save}</Button>
+  1510→                  </DialogFooter>
+  1511→                </DialogContent>
+  1512→              </Dialog>
+  1513→            </div>
+  1514→
+  1515→            {/* قائمة المشاريع */}
+  1516→            {projectViewMode === 'gallery' ? (
+  1517→              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+  1518→                {projects.map(project => {
+  1519→                  const projectItems = items.filter(i => i.projectId === project.id)
+  1520→                  const projectProgress = projectItems.length > 0 
+  1521→                    ? Math.round(projectItems.reduce((sum, item) => {
+  1522→                        const completedStages = item.stages.filter(s => s.status === 'completed').length
+  1523→                        return sum + (item.stages.length > 0 ? (completedStages / item.stages.length) * 100 : 0)
+  1524→                      }, 0) / projectItems.length)
+  1525→                    : 0
+  1526→                  const pms = projectMaterialsMap[project.id] || []
+  1527→                  const totalCost = pms.reduce((sum, pm) => sum + (pm.material?.unitPrice || 0) * pm.quantity, 0)
+  1528→                  
+  1529→                  return (
+  1530→                    <Card key={project.id} className="overflow-hidden group hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+  1531→                      {/* صورة المشروع الكبيرة */}
+  1532→                      <div className="relative aspect-[4/3] bg-gradient-to-br from-amber-100 via-orange-50 to-amber-50 overflow-hidden">
+  1533→                        {project.image ? (
+  1534→                          <img src={project.image} alt={getProjectDisplayName(project)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+  1535→                        ) : (
+  1536→                          <div className="w-full h-full flex items-center justify-center">
+  1537→                            <div className="w-24 h-24 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center text-white text-4xl font-bold shadow-lg">
+  1538→                              {getProjectInitial(project)}
+  1539→                            </div>
+  1540→                          </div>
+  1541→                        )}
+  1542→                        {/* تراكب التدرج */}
+  1543→                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+  1544→                        {/* شارة الحالة */}
+  1545→                        <Badge className={`absolute top-3 ${isRTL ? 'left-3' : 'right-3'} ${project.status === 'active' ? 'bg-green-500' : 'bg-gray-500'} shadow-md`}>
+  1546→                          {project.status === 'active' ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'مكتمل' : 'Completed')}
+  1547→                        </Badge>
+  1548→                        {/* معلومات المشروع على الصورة */}
+  1549→                        <div className="absolute bottom-3 inset-x-3">
+  1550→                          <h3 className="text-white font-bold text-lg drop-shadow-md">{getProjectDisplayName(project)}</h3>
+  1551→                          {project.location && <p className="text-white/80 text-sm flex items-center gap-1"><MapPin className="w-3 h-3" />{project.location}</p>}
+  1552→                          {project.recipient && <p className="text-white/70 text-xs flex items-center gap-1"><UserCheck className="w-3 h-3" />{project.recipient}</p>}
+  1553→                        </div>
+  1554→                      </div>
+  1555→                      <CardContent className="p-4 space-y-3">
+  1556→                        {/* معلومات المشروع التفصيلية */}
+  1557→                        <div className="grid grid-cols-2 gap-2 text-xs">
+  1558→                          {project.executiveManager && (
+  1559→                            <div className="flex items-center gap-1.5 text-amber-800 bg-amber-50 rounded-md px-2 py-1">
+  1560→                              <User className="w-3 h-3" />
+  1561→                              <span className="font-medium">{project.executiveManager}</span>
+  1562→                            </div>
+  1563→                          )}
+  1564→                          {project.startDate && (
+  1565→                            <div className="flex items-center gap-1.5 text-blue-700 bg-blue-50 rounded-md px-2 py-1">
+  1566→                              <Calendar className="w-3 h-3" />
+  1567→                              <span>{new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+  1568→                            </div>
+  1569→                          )}
+  1570→                          {project.clientName && (
+  1571→                            <div className="flex items-center gap-1.5 text-gray-600 bg-gray-50 rounded-md px-2 py-1">
+  1572→                              <Users className="w-3 h-3" />
+  1573→                              <span>{project.clientName}</span>
+  1574→                            </div>
+  1575→                          )}
+  1576→                          {project.endDate && (
+  1577→                            <div className="flex items-center gap-1.5 text-green-700 bg-green-50 rounded-md px-2 py-1">
+  1578→                              <CheckCircle2 className="w-3 h-3" />
+  1579→                              <span>{new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+  1580→                            </div>
+  1581→                          )}
+  1582→                        </div>
+  1583→                        {/* ملاحظات */}
+  1584→                        {project.notes && (
+  1585→                          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2 text-xs">
+  1586→                            <p className="text-yellow-800">{project.notes.length > 80 ? project.notes.slice(0, 80) + '...' : project.notes}</p>
+  1587→                            {project.notesAuthor && <p className="text-yellow-600 mt-1 font-medium">— {project.notesAuthor}</p>}
+  1588→                          </div>
+  1589→                        )}
+  1590→                        {/* شريط التقدم */}
+  1591→                        <div className="space-y-1">
+  1592→                          <div className="flex justify-between text-sm">
+  1593→                            <span className="text-gray-500">{language === 'ar' ? 'الإنجاز' : 'Progress'}</span>
+  1594→                            <span className="font-bold text-amber-600">{projectProgress}%</span>
+  1595→                          </div>
+  1596→                          <Progress value={projectProgress} className="h-2" />
+  1597→                        </div>
+  1598→                        {/* معلومات سريعة */}
+  1599→                        <div className="flex items-center gap-4 text-xs text-gray-500">
+  1600→                          <span className="flex items-center gap-1"><Package className="w-3.5 h-3.5" /> {projectItems.length} {language === 'ar' ? 'عنصر' : 'items'}</span>
+  1601→                          <span className="flex items-center gap-1"><Box className="w-3.5 h-3.5" /> {pms.length} {language === 'ar' ? 'مواد' : 'materials'}</span>
+  1602→                          {totalCost > 0 && <span className="flex items-center gap-1 text-green-600 font-medium">{totalCost.toFixed(0)} {language === 'ar' ? 'ر.ق' : 'QR'}</span>}
+  1603→                        </div>
+  1604→                        {/* المواد المستعملة */}
+  1605→                        {(usedMaterialsMap[project.id] || []).length > 0 && (
+  1606→                          <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded-md">
+  1607→                            <p className="text-xs font-semibold text-purple-700 mb-1">{language === 'ar' ? 'المواد المستعملة' : 'Used Materials'}:</p>
+  1608→                            <div className="space-y-1">
+  1609→                              {(usedMaterialsMap[project.id] || []).map((um: any) => (
+  1610→                                <div key={um.id} className="flex items-center justify-between text-xs">
+  1611→                                  <span className="text-purple-800">{um.material?.nameAr || um.material?.name}</span>
+  1612→                                  <span className="text-purple-600 font-medium">{um.quantity} {um.material?.unitAr || um.material?.unit}</span>
+  1613→                                </div>
+  1614→                              ))}
+  1615→                            </div>
+  1616→                          </div>
+  1617→                        )}
+  1618→                        {/* أزرار */}
+  1619→                        <div className="flex gap-2 pt-2 border-t print:hidden">
+  1620→                          {currentUser?.role !== 'store_keeper' && (
+  1621→                            <Button variant="outline" size="sm" className="gap-1 flex-1 h-8 text-xs" onClick={() => { setEditingProject(project); setEditProjectOpen(true) }}
+  1622→                              disabled={currentUser?.role === 'executive_manager' && project.createdById !== currentUser?.id}>
+  1623→                              <Edit className="w-3.5 h-3.5" /> {t.btn_edit}
+  1624→                            </Button>
+  1625→                          )}
+  1626→                          {(project.createdById === currentUser?.id || currentUser?.role === 'general_manager') && currentUser?.role !== 'store_keeper' && (
+  1627→                            <Button variant="outline" size="sm" className="gap-1 h-8 text-xs" onClick={() => {
+  1628→                              setSelectedProjectForMaterial(project.id)
+  1629→                              setSelectedMaterialForProject('')
+  1630→                              setNewMaterialQuantity(1)
+  1631→                              setAddMaterialToProjectOpen(true)
+  1632→                            }}>
+  1633→                              <Plus className="w-3.5 h-3.5" /> {language === 'ar' ? 'مواد مطلوبة' : 'Materials'}
+  1634→                            </Button>
+  1635→                          )}
+  1636→                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager') && (
+  1637→                            <Button variant="outline" size="sm" className="gap-1 h-8 text-xs bg-purple-50 border-purple-300 text-purple-700" onClick={() => {
+  1638→                              setSelectedProjectForUsedMaterial(project.id)
+  1639→                              setSelectedMaterialForUsedMaterial('')
+  1640→                              setNewUsedMaterialQuantity(1)
+  1641→                              setUsedMaterialNotes('')
+  1642→                              setUsedMaterialSearchQuery('')
+  1643→                              setAddUsedMaterialOpen(true)
+  1644→                            }}>
+  1645→                              <Plus className="w-3.5 h-3.5" /> {language === 'ar' ? 'مواد مستعملة' : 'Used'}
+  1646→                            </Button>
+  1647→                          )}
+  1648→                          {((currentUser?.role === 'general_manager') || (currentUser?.role === 'executive_manager' && project.createdById === currentUser?.id)) && (
+  1649→                            <Button variant="outline" size="sm" className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteProject(project.id)}>
+  1650→                              <Trash2 className="w-3.5 h-3.5" />
+  1651→                            </Button>
+  1652→                          )}
+  1653→                        </div>
+  1654→                      </CardContent>
+  1655→                    </Card>
+  1656→                  )
+  1657→                })}
+  1658→              </div>
+  1659→            ) : projectViewMode === 'list' ? (
+  1660→              <div className="space-y-2">
+  1661→                {projects.map(project => {
+  1662→                  const projectItems = items.filter(i => i.projectId === project.id)
+  1663→                  const projectProgress = projectItems.length > 0 
+  1664→                    ? Math.round(projectItems.reduce((sum, item) => {
+  1665→                        const completedStages = item.stages.filter(s => s.status === 'completed').length
+  1666→                        return sum + (item.stages.length > 0 ? (completedStages / item.stages.length) * 100 : 0)
+  1667→                      }, 0) / projectItems.length)
+  1668→                    : 0
+  1669→                  const pms = projectMaterialsMap[project.id] || []
+  1670→                  const totalCost = pms.reduce((sum, pm) => sum + (pm.material?.unitPrice || 0) * pm.quantity, 0)
+  1671→                  
+  1672→                  return (
+  1673→                    <Card key={project.id} className="hover:shadow-md transition-shadow overflow-hidden">
+  1674→                      <div className="flex items-center gap-4 p-4">
+  1675→                        {/* صورة مصغرة */}
+  1676→                        <div className="flex-shrink-0">
+  1677→                          {project.image ? (
+  1678→                            <img src={project.image} alt={getProjectDisplayName(project)} className="w-16 h-16 rounded-xl object-cover shadow-sm" />
+  1679→                          ) : (
+  1680→                            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center text-white text-2xl font-bold shadow-sm">
+  1681→                              {getProjectInitial(project)}
+  1682→                            </div>
+  1683→                          )}
+  1684→                        </div>
+  1685→                        {/* معلومات المشروع */}
+  1686→                        <div className="flex-1 min-w-0">
+  1687→                          <div className="flex items-center gap-2 mb-1">
+  1688→                            <h3 className="font-bold text-amber-900 truncate">{getProjectDisplayName(project)}</h3>
+  1689→                            <Badge className={`flex-shrink-0 ${project.status === 'active' ? 'bg-green-500' : 'bg-gray-500'}`}>
+  1690→                              {project.status === 'active' ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'مكتمل' : 'Completed')}
+  1691→                            </Badge>
+  1692→                          </div>
+  1693→                          <div className="flex items-center gap-3 text-xs text-gray-500 mb-1 flex-wrap">
+  1694→                            {project.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{project.location}</span>}
+  1695→                            {project.recipient && <span className="flex items-center gap-1"><UserCheck className="w-3 h-3" />{project.recipient}</span>}
+  1696→                            {project.executiveManager && <span className="flex items-center gap-1"><User className="w-3 h-3" />{project.executiveManager}</span>}
+  1697→                            <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {projectItems.length}</span>
+  1698→                            <span className="flex items-center gap-1"><Box className="w-3 h-3" /> {pms.length}</span>
+  1699→                            {totalCost > 0 && <span className="text-green-600 font-medium">{totalCost.toFixed(0)} {language === 'ar' ? 'ر.ق' : 'QR'}</span>}
+  1700→                          </div>
+  1701→                          <div className="flex items-center gap-3">
+  1702→                            <Progress value={projectProgress} className="h-1.5 flex-1 max-w-[200px]" />
+  1703→                            <span className="text-xs font-bold text-amber-600">{projectProgress}%</span>
+  1704→                            {project.startDate && (
+  1705→                              <span className="text-xs text-blue-600">{new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} → {project.endDate ? new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '?'}</span>
+  1706→                            )}
+  1707→                          </div>
+  1708→                          {project.notes && (
+  1709→                            <p className="text-xs text-gray-400 mt-1 truncate">{project.notes}{project.notesAuthor ? ` — ${project.notesAuthor}` : ''}</p>
+  1710→                          )}
+  1711→                        </div>
+  1712→                        {/* أزرار */}
+  1713→                        <div className="flex items-center gap-1 print:hidden flex-shrink-0">
+  1714→                          {currentUser?.role !== 'store_keeper' && (
+  1715→                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingProject(project); setEditProjectOpen(true) }} disabled={currentUser?.role === 'executive_manager' && project.createdById !== currentUser?.id}><Edit className="w-4 h-4 text-blue-500" /></Button>
+  1716→                          )}
+  1717→                          {(project.createdById === currentUser?.id || currentUser?.role === 'general_manager') && currentUser?.role !== 'store_keeper' && (
+  1718→                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+  1719→                              setSelectedProjectForMaterial(project.id)
+  1720→                              setSelectedMaterialForProject('')
+  1721→                              setNewMaterialQuantity(1)
+  1722→                              setAddMaterialToProjectOpen(true)
+  1723→                            }}><Box className="w-4 h-4 text-amber-600" /></Button>
+  1724→                          )}
+  1725→                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager') && (
+  1726→                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+  1727→                              setSelectedProjectForUsedMaterial(project.id)
+  1728→                              setSelectedMaterialForUsedMaterial('')
+  1729→                              setNewUsedMaterialQuantity(1)
+  1730→                              setUsedMaterialNotes('')
+  1731→                              setUsedMaterialSearchQuery('')
+  1732→                              setAddUsedMaterialOpen(true)
+  1733→                            }}><Box className="w-4 h-4 text-purple-600" /></Button>
+  1734→                          )}
+  1735→                          {((currentUser?.role === 'general_manager') || (currentUser?.role === 'executive_manager' && project.createdById === currentUser?.id)) && (
+  1736→                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteProject(project.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+  1737→                          )}
+  1738→                        </div>
+  1739→                      </div>
+  1740→                    </Card>
+  1741→                  )
+  1742→                })}
+  1743→              </div>
+  1744→            ) : (
+  1745→              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+  1746→                {projects.map(project => {
+  1747→                  const projectItems = items.filter(i => i.projectId === project.id)
+  1748→                  const projectProgress = projectItems.length > 0 
+  1749→                    ? Math.round(projectItems.reduce((sum, item) => {
+  1750→                        const completedStages = item.stages.filter(s => s.status === 'completed').length
+  1751→                        return sum + (item.stages.length > 0 ? (completedStages / item.stages.length) * 100 : 0)
+  1752→                      }, 0) / projectItems.length)
+  1753→                    : 0
+  1754→                  const pms = projectMaterialsMap[project.id] || []
+  1755→                  const totalCost = pms.reduce((sum, pm) => sum + (pm.material?.unitPrice || 0) * pm.quantity, 0)
+  1756→                  
+  1757→                  return (
+  1758→                    <Card key={project.id} className="overflow-hidden hover:shadow-lg transition-all duration-300 group">
+  1759→                      <div className="h-2 bg-gradient-to-r from-amber-500 to-orange-500" />
+  1760→                      {project.image && (
+  1761→                        <div className="relative aspect-[3/1] bg-gray-100 overflow-hidden">
+  1762→                          <img src={project.image} alt={getProjectDisplayName(project)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+  1763→                          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+  1764→                          <Badge className={`absolute top-2 ${isRTL ? 'left-2' : 'right-2'} ${project.status === 'active' ? 'bg-green-500' : 'bg-gray-500'} shadow`}>
+  1765→                            {project.status === 'active' ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'مكتمل' : 'Completed')}
+  1766→                          </Badge>
+  1767→                        </div>
+  1768→                      )}
+  1769→                      <CardHeader className="pb-2">
+  1770→                        <div className="flex justify-between items-start">
+  1771→                          <div className="flex items-center gap-3">
+  1772→                            {!project.image && (
+  1773→                              <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold shadow-sm">
+  1774→                                {getProjectInitial(project)}
+  1775→                              </div>
+  1776→                            )}
+  1777→                            <div>
+  1778→                              <CardTitle className="text-lg">{getProjectDisplayName(project)}</CardTitle>
+  1779→                              <CardDescription className="flex items-center gap-2 flex-wrap">
+  1780→                                {project.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{project.location}</span>}
+  1781→                                {project.recipient && <span className="flex items-center gap-1"><UserCheck className="w-3 h-3" />{project.recipient}</span>}
+  1782→                                <span className="text-xs">• {projectItems.length} {language === 'ar' ? 'عنصر' : 'items'}</span>
+  1783→                                {pms.length > 0 && <span className="text-xs">• {pms.length} {language === 'ar' ? 'مواد' : 'materials'}</span>}
+  1784→                              </CardDescription>
+  1785→                            </div>
+  1786→                          </div>
+  1787→                          {!project.image && (
+  1788→                            <Badge className={project.status === 'active' ? 'bg-green-500' : 'bg-gray-500'}>
+  1789→                              {project.status === 'active' ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'مكتمل' : 'Completed')}
+  1790→                            </Badge>
+  1791→                          )}
+  1792→                        </div>
+  1793→                      </CardHeader>
+  1794→                      <CardContent className="space-y-3 pt-0">
+  1795→                        {/* معلومات التنفيذ */}
+  1796→                        {(project.executiveManager || project.startDate || project.endDate) && (
+  1797→                          <div className="grid grid-cols-2 gap-2 text-xs">
+  1798→                            {project.executiveManager && (
+  1799→                              <div className="flex items-center gap-1.5 text-amber-800 bg-amber-50 rounded-md px-2 py-1">
+  1800→                                <User className="w-3 h-3" />
+  1801→                                <span className="font-medium">{project.executiveManager}</span>
+  1802→                              </div>
+  1803→                            )}
+  1804→                            {project.startDate && (
+  1805→                              <div className="flex items-center gap-1.5 text-blue-700 bg-blue-50 rounded-md px-2 py-1">
+  1806→                                <Calendar className="w-3 h-3" />
+  1807→                                <span>{new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+  1808→                              </div>
+  1809→                            )}
+  1810→                            {project.clientName && (
+  1811→                              <div className="flex items-center gap-1.5 text-gray-600 bg-gray-50 rounded-md px-2 py-1">
+  1812→                                <Users className="w-3 h-3" />
+  1813→                                <span>{project.clientName}</span>
+  1814→                              </div>
+  1815→                            )}
+  1816→                            {project.endDate && (
+  1817→                              <div className="flex items-center gap-1.5 text-green-700 bg-green-50 rounded-md px-2 py-1">
+  1818→                                <CheckCircle2 className="w-3 h-3" />
+  1819→                                <span>{new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+  1820→                              </div>
+  1821→                            )}
+  1822→                          </div>
+  1823→                        )}
+  1824→                        {/* ملاحظات */}
+  1825→                        {project.notes && (
+  1826→                          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2 text-xs">
+  1827→                            <p className="text-yellow-800">{project.notes.length > 100 ? project.notes.slice(0, 100) + '...' : project.notes}</p>
+  1828→                            {project.notesAuthor && <p className="text-yellow-600 mt-1 font-medium">— {project.notesAuthor}</p>}
+  1829→                          </div>
+  1830→                        )}
+  1831→                        <Progress value={projectProgress} className="h-2" />
+  1832→                        <div className="flex justify-between text-sm">
+  1833→                          <span className="text-gray-500">{language === 'ar' ? 'نسبة الإنجاز' : 'Progress'}</span>
+  1834→                          <span className="font-bold text-amber-600">{projectProgress}%</span>
+  1835→                        </div>
+  1836→                        {totalCost > 0 && (
+  1837→                          <div className="flex justify-between text-sm">
+  1838→                            <span className="text-gray-500">{language === 'ar' ? 'تكلفة المواد' : 'Materials Cost'}</span>
+  1839→                            <span className="font-bold text-green-600">{totalCost.toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</span>
+  1840→                          </div>
+  1841→                        )}
+  1842→                        {project.deadline && (
+  1843→                          <div className="flex items-center gap-1 text-sm text-gray-500">
+  1844→                            <Calendar className="w-4 h-4" />
+  1845→                            <span>{language === 'ar' ? 'الموعد النهائي' : 'Deadline'}: {formatDate(project.deadline)}</span>
+  1846→                          </div>
+  1847→                        )}
+  1848→                        {/* مواد المشروع */}
+  1849→                        {(() => {
+  1850→                          return (
+  1851→                            <div className="border-t pt-2">
+  1852→                              <div
+  1853→                                className="flex items-center justify-between cursor-pointer hover:bg-amber-50/50 rounded px-1 py-1 transition-colors"
+  1854→                                onClick={() => {
+  1855→                                  const newVal = expandedProjectMaterials === project.id ? '' : project.id
+  1856→                                  setExpandedProjectMaterials(newVal)
+  1857→                                  if (newVal) fetchProjectMaterials(project.id)
+  1858→                                }}
+  1859→                              >
+  1860→                                <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
+  1861→                                  <Box className="w-4 h-4" />
+  1862→                                  <span>{language === 'ar' ? 'المواد المطلوبة' : 'Required Materials'}</span>
+  1863→                                  <Badge variant="outline" className="text-xs">{pms.length}</Badge>
+  1864→                                </div>
+  1865→                                <div className="flex items-center gap-2">
+  1866→                                  {totalCost > 0 && (
+  1867→                                    <span className="text-xs font-bold text-green-600">{totalCost.toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</span>
+  1868→                                  )}
+  1869→                                  {expandedProjectMaterials === project.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+  1870→                                </div>
+  1871→                              </div>
+  1872→
+  1873→                              {expandedProjectMaterials === project.id && (
+  1874→                                <div className="mt-2 space-y-2">
+  1875→                                  {pms.length > 0 ? (
+  1876→                                    <>
+  1877→                                      <Table>
+  1878→                                        <TableHeader>
+  1879→                                          <TableRow>
+  1880→                                            <TableHead className="text-xs py-1">{language === 'ar' ? 'المادة' : 'Material'}</TableHead>
+  1881→                                            <TableHead className="text-xs py-1">{language === 'ar' ? 'الكمية' : 'Qty'}</TableHead>
+  1882→                                            <TableHead className="text-xs py-1">{language === 'ar' ? 'السعر' : 'Price'}</TableHead>
+  1883→                                            <TableHead className="text-xs py-1">{language === 'ar' ? 'الإجمالي' : 'Total'}</TableHead>
+  1884→                                            <TableHead className="text-xs py-1 w-8"></TableHead>
+  1885→                                          </TableRow>
+  1886→                                        </TableHeader>
+  1887→                                        <TableBody>
+  1888→                                          {pms.map((pm) => (
+  1889→                                            <TableRow key={pm.id}>
+  1890→                                              <TableCell className="text-xs py-1 font-medium">{pm.material?.name || '-'} {pm.material?.nameAr && pm.material.nameAr !== '-' ? `(${pm.material.nameAr})` : ''}</TableCell>
+  1891→                                              <TableCell className="text-xs py-1">{pm.quantity} {pm.material?.unit || ''}</TableCell>
+  1892→                                              <TableCell className="text-xs py-1">{(pm.material?.unitPrice || 0).toFixed(2)}</TableCell>
+  1893→                                              <TableCell className="text-xs py-1 font-bold">{((pm.material?.unitPrice || 0) * pm.quantity).toFixed(2)}</TableCell>
+  1894→                                              <TableCell className="text-xs py-1">
+  1895→                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveMaterialFromProject(pm.id, project.id)}>
+  1896→                                                  <X className="w-3 h-3 text-red-500" />
+  1897→                                                </Button>
+  1898→                                              </TableCell>
+  1899→                                            </TableRow>
+  1900→                                          ))}
+  1901→                                        </TableBody>
+  1902→                                        <tfoot>
+  1903→                                          <TableRow className="bg-amber-50">
+  1904→                                            <TableCell colSpan={3} className="text-xs py-1 font-bold">{language === 'ar' ? 'الإجمالي' : 'Total'}</TableCell>
+  1905→                                            <TableCell className="text-xs py-1 font-bold text-green-700">{totalCost.toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</TableCell>
+  1906→                                            <TableCell></TableCell>
+  1907→                                          </TableRow>
+  1908→                                        </tfoot>
+  1909→                                      </Table>
+  1910→                                      <Button
+  1911→                                        variant="outline"
+  1912→                                        size="sm"
+  1913→                                        className="gap-1 w-full text-xs"
+  1914→                                        onClick={() => {
+  1915→                                          setSelectedProjectForMaterial(project.id)
+  1916→                                          setSelectedMaterialForProject('')
+  1917→                                          setNewMaterialQuantity(1)
+  1918→                                          setAddMaterialToProjectOpen(true)
+  1919→                                        }}
+  1920→                                      >
+  1921→                                        <Plus className="w-3 h-3" /> {language === 'ar' ? 'إضافة مادة' : 'Add Material'}
+  1922→                                      </Button>
+  1923→                                    </>
+  1924→                                  ) : (
+  1925→                                    <div className="text-center py-3">
+  1926→                                      <p className="text-xs text-gray-400 mb-2">{language === 'ar' ? 'لا توجد مواد مضافة لهذا المشروع' : 'No materials added to this project'}</p>
+  1927→                                      <Button
+  1928→                                        variant="outline"
+  1929→                                        size="sm"
+  1930→                                        className="gap-1 text-xs"
+  1931→                                        onClick={() => {
+  1932→                                          setSelectedProjectForMaterial(project.id)
+  1933→                                          setSelectedMaterialForProject('')
+  1934→                                          setNewMaterialQuantity(1)
+  1935→                                          setAddMaterialToProjectOpen(true)
+  1936→                                        }}
+  1937→                                      >
+  1938→                                        <Plus className="w-3 h-3" /> {language === 'ar' ? 'إضافة مادة أولى' : 'Add First Material'}
+  1939→                                      </Button>
+  1940→                                    </div>
+  1941→                                  )}
+  1942→                                </div>
+  1943→                              )}
+  1944→                            </div>
+  1945→                          )
+  1946→                        })()}
+  1947→
+  1948→                        <div className="flex gap-2 pt-2 border-t print:hidden">
+  1949→                          {currentUser?.role !== 'store_keeper' && (
+  1950→                            <Button variant="outline" size="sm" className="gap-1 flex-1" onClick={() => { setEditingProject(project); setEditProjectOpen(true) }} disabled={currentUser?.role === 'executive_manager' && project.createdById !== currentUser?.id}>
+  1951→                              <Edit className="w-4 h-4" /> {t.btn_edit}
+  1952→                            </Button>
+  1953→                          )}
+  1954→                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager') && (
+  1955→                            <Button variant="outline" size="sm" className="gap-1 bg-purple-50 border-purple-300 text-purple-700" onClick={() => {
+  1956→                              setSelectedProjectForUsedMaterial(project.id)
+  1957→                              setSelectedMaterialForUsedMaterial('')
+  1958→                              setNewUsedMaterialQuantity(1)
+  1959→                              setUsedMaterialNotes('')
+  1960→                              setUsedMaterialSearchQuery('')
+  1961→                              setAddUsedMaterialOpen(true)
+  1962→                            }}>
+  1963→                              <Plus className="w-4 h-4" /> {language === 'ar' ? 'مواد مستعملة' : 'Used'}
+  1964→                            </Button>
+  1965→                          )}
+  1966→                          {((currentUser?.role === 'general_manager') || (currentUser?.role === 'executive_manager' && project.createdById === currentUser?.id)) && (
+  1967→                            <Button variant="outline" size="sm" className="gap-1 text-red-600 hover:text-red-700" onClick={() => handleDeleteProject(project.id)}>
+  1968→                              <Trash2 className="w-4 h-4" />
+  1969→                            </Button>
+  1970→                          )}
+  1971→                        </div>
+  1972→                      </CardContent>
+  1973→                    </Card>
+  1974→                  )
+  1975→                })}
+  1976→              </div>
+  1977→            )}
+  1978→            {projects.length === 0 && (
+  1979→              <div className="text-center py-12">
+  1980→                <FolderOpen className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+  1981→                <p className="text-gray-500">{language === 'ar' ? 'لا توجد مشاريع' : 'No projects yet'}</p>
+  1982→              </div>
+  1983→            )}
+  1984→          </TabsContent>
+  1985→
+  1986→          {/* تبويب المواد الأولية */}
+  1987→          <MaterialsTab projects={projects} language={language} t={t} isRTL={isRTL} currentUser={currentUser} />
+  1988→
+  1989→          {/* تبويب العناصر */}
+  1990→          <TabsContent value="items" className="space-y-4">
+  1991→            <div className="flex flex-col gap-3 print:hidden">
+  1992→              <div className="flex justify-between items-center">
+  1993→                <div className="flex items-center gap-3">
+  1994→                  <h2 className="text-xl font-bold text-amber-900">{t.items_list} ({items.filter(item => {
+  1995→                    if (itemProjectFilter !== 'all' && item.projectId !== itemProjectFilter) return false
+  1996→                    if (itemDepartmentFilter !== 'all' && !item.stages.some(s => s.departmentId === itemDepartmentFilter)) return false
+  1997→                    return true
+  1998→                  }).length}/{items.length})</h2>
+  1999→                  {/* تبديل وضع العرض */}
+  2000→                  <div className="flex items-center bg-white rounded-lg border border-amber-200 p-0.5">
+
+[showing lines 1-2000 of 3655; use offset=2001 with limit to continue reading]

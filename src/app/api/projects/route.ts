@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, isFullAdmin } from '@/lib/auth'
 
 // دالة مساعدة لإنشاء سجل تغيير
 async function logChange(projectId: string, userId: string, action: string, entity: string, entityId?: string, changes?: string) {
@@ -32,7 +32,7 @@ async function notifyManagers(projectId: string, supervisorName: string, action:
     // جلب المدير العام والمسؤول التنفيذي
     const managers = await db.user.findMany({
       where: {
-        role: { in: ['general_manager', 'executive_manager'] },
+        role: { in: ['general_manager', 'maintenance', 'executive_manager'] },
         status: 'active',
       },
       select: { id: true }
@@ -267,8 +267,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
     }
 
-    // فقط المدير العام والمسؤول التنفيذي يمكنهم الحذف
-    if (session.role !== 'general_manager' && session.role !== 'executive_manager') {
+    // فقط الإدارة والمسؤول التنفيذي يمكنهم الحذف
+    if (!isFullAdmin(session.role) && session.role !== 'executive_manager') {
       return NextResponse.json({ error: 'ليس لديك صلاحية حذف المشاريع' }, { status: 403 })
     }
 

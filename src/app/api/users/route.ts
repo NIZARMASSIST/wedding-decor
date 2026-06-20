@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, isFullAdmin } from '@/lib/auth'
 
 // الأدوار المتاحة
-const VALID_ROLES = ['general_manager', 'executive_manager', 'supervisor', 'store_keeper']
+const VALID_ROLES = ['general_manager', 'maintenance', 'executive_manager', 'supervisor', 'store_keeper']
 
 const ROLE_LABELS: Record<string, string> = {
   general_manager: 'مدير عام',
+  maintenance: 'صيانة',
   executive_manager: 'مسؤول تنفيذي',
   supervisor: 'مشرف',
   store_keeper: 'ستور كيبر',
@@ -20,8 +21,8 @@ export async function GET() {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
     }
 
-    // فقط المدير العام يمكنه رؤية كل المستخدمين
-    if (session.role !== 'general_manager') {
+    // فقط المدير العام أو الصيانة يمكنه رؤية كل المستخدمين
+    if (!isFullAdmin(session.role)) {
       return NextResponse.json({ error: 'ليس لديك صلاحية' }, { status: 403 })
     }
 
@@ -74,8 +75,8 @@ export async function PUT(request: NextRequest) {
       // إذا كان المستخدم يحدث اسمه الخاص
       if (id === session.userId) {
         data.name = name.trim()
-      } else if (session.role === 'general_manager') {
-        // المدير العام يمكنه تحديث أسماء الآخرين
+      } else if (isFullAdmin(session.role)) {
+        // المدير العام أو الصيانة يمكنهما تحديث أسماء الآخرين
         data.name = name.trim()
       } else {
         return NextResponse.json({ error: 'لا يمكنك تغيير اسم مستخدم آخر' }, { status: 403 })
@@ -84,17 +85,17 @@ export async function PUT(request: NextRequest) {
 
     // تحديث الهاتف - يمكن لأي مستخدم تحديث هاتفه
     if (phone !== undefined) {
-      if (id === session.userId || session.role === 'general_manager') {
+      if (id === session.userId || isFullAdmin(session.role)) {
         data.phone = phone.trim() || null
       } else {
         return NextResponse.json({ error: 'لا يمكنك تغيير هاتف مستخدم آخر' }, { status: 403 })
       }
     }
 
-    // تحديث الدور - فقط المدير العام
+    // تحديث الدور - فقط المدير العام أو الصيانة
     if (role !== undefined) {
-      if (session.role !== 'general_manager') {
-        return NextResponse.json({ error: 'فقط المدير العام يمكنه تغيير الأدوار' }, { status: 403 })
+      if (!isFullAdmin(session.role)) {
+        return NextResponse.json({ error: 'فقط المدير العام أو الصيانة يمكنهما تغيير الأدوار' }, { status: 403 })
       }
       if (!VALID_ROLES.includes(role)) {
         return NextResponse.json({ error: 'دور غير صالح' }, { status: 400 })
@@ -115,10 +116,10 @@ export async function PUT(request: NextRequest) {
       data.role = role
     }
 
-    // تحديث الحالة - فقط المدير العام
+    // تحديث الحالة - فقط المدير العام أو الصيانة
     if (status !== undefined) {
-      if (session.role !== 'general_manager') {
-        return NextResponse.json({ error: 'فقط المدير العام يمكنه تغيير حالة المستخدمين' }, { status: 403 })
+      if (!isFullAdmin(session.role)) {
+        return NextResponse.json({ error: 'فقط المدير العام أو الصيانة يمكنهما تغيير حالة المستخدمين' }, { status: 403 })
       }
       data.status = status
     }
@@ -155,8 +156,8 @@ export async function DELETE(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
     }
-    if (session.role !== 'general_manager') {
-      return NextResponse.json({ error: 'فقط المدير العام يمكنه حذف المستخدمين' }, { status: 403 })
+    if (!isFullAdmin(session.role)) {
+      return NextResponse.json({ error: 'فقط المدير العام أو الصيانة يمكنهما حذف المستخدمين' }, { status: 403 })
     }
 
     const searchParams = request.nextUrl.searchParams
@@ -166,10 +167,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'معرف المستخدم مطلوب' }, { status: 400 })
     }
 
-    // لا يمكن حذف المدير العام
+    // لا يمكن حذف المدير العام أو الصيانة
     const userToDelete = await prisma.user.findUnique({ where: { id } })
-    if (userToDelete?.role === 'general_manager') {
-      return NextResponse.json({ error: 'لا يمكن حذف المدير العام' }, { status: 400 })
+    if (userToDelete && isFullAdmin(userToDelete.role)) {
+      return NextResponse.json({ error: 'لا يمكن حذف حساب الإدارة' }, { status: 400 })
     }
 
     // لا يمكن حذف نفسك

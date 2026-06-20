@@ -312,7 +312,7 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
         <div className="flex justify-between items-center flex-wrap gap-2 print:hidden">
           <h2 className="text-xl font-bold text-amber-900">{t.materials_title} ({materials.length})</h2>
           <div className="flex gap-2 flex-wrap">
-            {(currentUser?.role === 'general_manager' || currentUser?.role === 'store_keeper') && (
+            {(currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'store_keeper') && (
             <Dialog open={addMaterialOpen} onOpenChange={setAddMaterialOpen}>
               <DialogTrigger asChild>
                 <Button className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">
@@ -401,7 +401,7 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
               </DialogContent>
             </Dialog>
             )}
-            {(currentUser?.role === 'general_manager' || currentUser?.role === 'store_keeper') && (
+            {(currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'store_keeper') && (
             <Button variant="outline" className="gap-2 bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700" onClick={() => setImportMaterialOpen(true)}>
               <Upload className="w-4 h-4" /> {t.btn_import_excel}
             </Button>
@@ -540,12 +540,12 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                     <TableCell className="font-medium">{(material.unitPrice * material.stockQuantity).toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</TableCell>
                     <TableCell className="print:hidden">
                       <div className="flex gap-1">
-                        {(currentUser?.role === 'general_manager' || currentUser?.role === 'store_keeper') && (
+                        {(currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'store_keeper') && (
                           <Button variant="ghost" size="icon" onClick={() => { setEditingMaterial(material); setEditMaterialOpen(true) }} title={language === 'ar' ? 'تعديل' : 'Edit'}>
                             <Edit className="w-4 h-4 text-blue-500" />
                           </Button>
                         )}
-                        {currentUser?.role === 'general_manager' && (
+                        {currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' && (
                           <Button variant="ghost" size="icon" onClick={() => handleDeleteMaterial(material.id)} title={language === 'ar' ? 'حذف' : 'Delete'}>
                             <Trash2 className="w-4 h-4 text-red-500" />
                           </Button>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, isFullAdmin } from '@/lib/auth'
 
 // GET - جلب سجل التغييرات لمشروع
 export async function GET(request: NextRequest) {
@@ -10,8 +10,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
     }
 
-    // فقط المدير العام والمسؤول التنفيذي يمكنهم رؤية سجل التغييرات
-    if (session.role !== 'general_manager' && session.role !== 'executive_manager') {
+    // فقط الإدارة والمسؤول التنفيذي يمكنهم رؤية سجل التغييرات
+    if (!isFullAdmin(session.role) && session.role !== 'executive_manager') {
       return NextResponse.json({ error: 'ليس لديك صلاحية' }, { status: 403 })
     }
 

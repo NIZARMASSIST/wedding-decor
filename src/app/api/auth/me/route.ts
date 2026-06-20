@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 
 const ROLE_LABELS: Record<string, string> = {
   general_manager: 'مدير عام',
+  maintenance: 'صيانة',
   executive_manager: 'مسؤول تنفيذي',
   supervisor: 'مشرف',
   store_keeper: 'ستور كيبر',

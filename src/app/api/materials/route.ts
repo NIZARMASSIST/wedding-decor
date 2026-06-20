@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, isFullAdmin } from '@/lib/auth'
 
 // GET - جلب جميع المواد
 export async function GET(request: NextRequest) {
@@ -75,8 +75,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
     }
 
-    // فقط المدير العام والستور كيبر يمكنهم إضافة مواد
-    if (session.role !== 'general_manager' && session.role !== 'store_keeper') {
+    // فقط الإدارة والستور كيبر يمكنهم إضافة مواد
+    if (!isFullAdmin(session.role) && session.role !== 'store_keeper') {
       return NextResponse.json({ error: 'ليس لديك صلاحية إضافة مواد' }, { status: 403 })
     }
 
@@ -181,7 +181,7 @@ export async function PUT(request: NextRequest) {
 
     // === إضافة مادة مستعملة للمشروع (ستور كيبر فقط) ===
     if (body.action === 'addUsedMaterial') {
-      if (session.role !== 'store_keeper' && session.role !== 'general_manager') {
+      if (session.role !== 'store_keeper' && !isFullAdmin(session.role)) {
         return NextResponse.json({ error: 'فقط الستور كيبر يمكنه إضافة المواد المستعملة' }, { status: 403 })
       }
 
@@ -224,7 +224,7 @@ export async function PUT(request: NextRequest) {
 
     // === إزالة مادة مستعملة من المشروع (ستور كيبر فقط) ===
     if (body.action === 'removeUsedMaterial') {
-      if (session.role !== 'store_keeper' && session.role !== 'general_manager') {
+      if (session.role !== 'store_keeper' && !isFullAdmin(session.role)) {
         return NextResponse.json({ error: 'فقط الستور كيبر يمكنه إزالة المواد المستعملة' }, { status: 403 })
       }
 
@@ -250,7 +250,7 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: 'المشروع غير موجود' }, { status: 404 })
       }
 
-      if (session.role !== 'general_manager' && project.createdById !== session.userId) {
+      if (!isFullAdmin(session.role) && project.createdById !== session.userId) {
         return NextResponse.json({ error: 'فقط منشئ المشروع يمكنه إضافة المواد المطلوبة' }, { status: 403 })
       }
 
@@ -284,7 +284,7 @@ export async function PUT(request: NextRequest) {
       // التحقق من الصلاحية
       if (projectId) {
         const project = await db.project.findUnique({ where: { id: projectId } })
-        if (project && session.role !== 'general_manager' && project.createdById !== session.userId) {
+        if (project && !isFullAdmin(session.role) && project.createdById !== session.userId) {
           return NextResponse.json({ error: 'فقط منشئ المشروع يمكنه إزالة المواد المطلوبة' }, { status: 403 })
         }
       }
@@ -300,8 +300,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Material ID is required' }, { status: 400 })
     }
 
-    // فقط المدير العام والستور كيبر يمكنهم تحديث المواد الأولية والمخزون
-    if (session.role !== 'general_manager' && session.role !== 'store_keeper') {
+    // فقط الإدارة والستور كيبر يمكنهم تحديث المواد الأولية والمخزون
+    if (!isFullAdmin(session.role) && session.role !== 'store_keeper') {
       return NextResponse.json({ error: 'ليس لديك صلاحية تحديث المواد' }, { status: 403 })
     }
 
@@ -337,8 +337,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
     }
 
-    if (session.role !== 'general_manager') {
-      return NextResponse.json({ error: 'فقط المدير العام يمكنه حذف المواد' }, { status: 403 })
+    if (!isFullAdmin(session.role)) {
+      return NextResponse.json({ error: 'فقط الإدارة يمكنها حذف المواد' }, { status: 403 })
     }
 
     const searchParams = request.nextUrl.searchParams

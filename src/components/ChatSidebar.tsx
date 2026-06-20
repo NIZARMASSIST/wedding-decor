@@ -553,7 +553,7 @@ export default function ChatSidebar({ isOpen, onClose, currentUser, language }: 
                               <Eye className="w-3 h-3" /> {isRTL ? 'المشاهدين' : 'Viewers'}
                             </button>
                           )}
-                          {(msg.senderId === currentUser?.id || currentUser?.role === 'general_manager') && (
+                          {(msg.senderId === currentUser?.id || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && (
                             <button
                               onClick={() => handleDeleteMessage(msg.id)}
                               className="w-full text-right px-3 py-1.5 text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"

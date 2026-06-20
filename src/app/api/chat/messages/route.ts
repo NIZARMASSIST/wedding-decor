@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, isFullAdmin } from '@/lib/auth'
 
 // GET - جلب رسائل محادثة
 export async function GET(req: NextRequest) {
@@ -159,7 +159,7 @@ export async function PUT(req: NextRequest) {
       if (!message) {
         return NextResponse.json({ error: 'الرسالة غير موجودة' }, { status: 404 })
       }
-      if (message.senderId !== user.userId && user.role !== 'general_manager') {
+      if (message.senderId !== user.userId && !isFullAdmin(user.role)) {
         return NextResponse.json({ error: 'غير مصرح بحذف هذه الرسالة' }, { status: 403 })
       }
       await prisma.message.update({
@@ -179,7 +179,7 @@ export async function PUT(req: NextRequest) {
           }
         }
       })
-      if (!participation && user.role !== 'general_manager') {
+      if (!participation && !isFullAdmin(user.role)) {
         return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
       }
       await prisma.message.updateMany({

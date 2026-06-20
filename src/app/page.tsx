@@ -616,8 +616,8 @@ export default function Home() {
         if (res.ok) {
           const data = await res.json()
           setCurrentUser({ id: data.user.id, name: data.user.name, email: data.user.email, phone: data.user.phone, role: data.user.role })
-          // Fetch users if general_manager
-          if (data.user?.role === 'general_manager') {
+          // Fetch users if admin (general_manager or maintenance)
+          if (data.user?.role === 'general_manager' || data.user?.role === 'maintenance') {
             try {
               const usersRes = await fetch('/api/users')
               if (usersRes.ok) {
@@ -1374,7 +1374,7 @@ export default function Home() {
                   <div className="flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg text-sm">
                     <User className="w-4 h-4" />
                     <span className="font-medium">{currentUser.name}</span>
-                    <span className="text-xs opacity-70">({currentUser.role === 'general_manager' ? 'مدير عام' : currentUser.role === 'executive_manager' ? 'مسؤول تنفيذي' : currentUser.role === 'store_keeper' ? 'ستور كيبر' : 'مشرف'})</span>
+                    <span className="text-xs opacity-70">({currentUser.role === 'general_manager' ? 'مدير عام' : currentUser.role === 'maintenance' ? 'صيانة' : currentUser.role === 'executive_manager' ? 'مسؤول تنفيذي' : currentUser.role === 'store_keeper' ? 'ستور كيبر' : 'مشرف'})</span>
                   </div>
                   <Button onClick={handleLogout} variant="outline" size="sm" className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
                     <LogOut className="w-4 h-4" />
@@ -1398,7 +1398,7 @@ export default function Home() {
             <TabsTrigger value="schedule" className="gap-2"><Calendar className="w-4 h-4" /> {t.nav_schedule}</TabsTrigger>
             <TabsTrigger value="charts" className="gap-2"><BarChart3 className="w-4 h-4" /> {language === 'ar' ? 'الرسوم البيانية' : 'Charts'}</TabsTrigger>
             <TabsTrigger value="departments" className="gap-2"><Users className="w-4 h-4" /> {t.nav_departments}</TabsTrigger>
-            {currentUser?.role === 'general_manager' && (
+            {(currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && (
               <TabsTrigger value="users" className="gap-2">
                 <Users className="w-4 h-4" /> {language === 'ar' ? 'المستخدمين' : 'Users'}
               </TabsTrigger>
@@ -1623,7 +1623,7 @@ export default function Home() {
                               <Edit className="w-3.5 h-3.5" /> {t.btn_edit}
                             </Button>
                           )}
-                          {(project.createdById === currentUser?.id || currentUser?.role === 'general_manager') && currentUser?.role !== 'store_keeper' && (
+                          {(project.createdById === currentUser?.id || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && currentUser?.role !== 'store_keeper' && (
                             <Button variant="outline" size="sm" className="gap-1 h-8 text-xs" onClick={() => {
                               setSelectedProjectForMaterial(project.id)
                               setSelectedMaterialForProject('')
@@ -1633,7 +1633,7 @@ export default function Home() {
                               <Plus className="w-3.5 h-3.5" /> {language === 'ar' ? 'مواد مطلوبة' : 'Materials'}
                             </Button>
                           )}
-                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager') && (
+                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && (
                             <Button variant="outline" size="sm" className="gap-1 h-8 text-xs bg-purple-50 border-purple-300 text-purple-700" onClick={() => {
                               setSelectedProjectForUsedMaterial(project.id)
                               setSelectedMaterialForUsedMaterial('')
@@ -1645,7 +1645,7 @@ export default function Home() {
                               <Plus className="w-3.5 h-3.5" /> {language === 'ar' ? 'مواد مستعملة' : 'Used'}
                             </Button>
                           )}
-                          {((currentUser?.role === 'general_manager') || (currentUser?.role === 'executive_manager' && project.createdById === currentUser?.id)) && (
+                          {((currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') || (currentUser?.role === 'executive_manager' && project.createdById === currentUser?.id)) && (
                             <Button variant="outline" size="sm" className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteProject(project.id)}>
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
@@ -1714,7 +1714,7 @@ export default function Home() {
                           {currentUser?.role !== 'store_keeper' && (
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingProject(project); setEditProjectOpen(true) }} disabled={currentUser?.role === 'executive_manager' && project.createdById !== currentUser?.id}><Edit className="w-4 h-4 text-blue-500" /></Button>
                           )}
-                          {(project.createdById === currentUser?.id || currentUser?.role === 'general_manager') && currentUser?.role !== 'store_keeper' && (
+                          {(project.createdById === currentUser?.id || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && currentUser?.role !== 'store_keeper' && (
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
                               setSelectedProjectForMaterial(project.id)
                               setSelectedMaterialForProject('')
@@ -1722,7 +1722,7 @@ export default function Home() {
                               setAddMaterialToProjectOpen(true)
                             }}><Box className="w-4 h-4 text-amber-600" /></Button>
                           )}
-                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager') && (
+                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && (
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
                               setSelectedProjectForUsedMaterial(project.id)
                               setSelectedMaterialForUsedMaterial('')
@@ -1732,7 +1732,7 @@ export default function Home() {
                               setAddUsedMaterialOpen(true)
                             }}><Box className="w-4 h-4 text-purple-600" /></Button>
                           )}
-                          {((currentUser?.role === 'general_manager') || (currentUser?.role === 'executive_manager' && project.createdById === currentUser?.id)) && (
+                          {((currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') || (currentUser?.role === 'executive_manager' && project.createdById === currentUser?.id)) && (
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteProject(project.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                           )}
                         </div>
@@ -1951,7 +1951,7 @@ export default function Home() {
                               <Edit className="w-4 h-4" /> {t.btn_edit}
                             </Button>
                           )}
-                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager') && (
+                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && (
                             <Button variant="outline" size="sm" className="gap-1 bg-purple-50 border-purple-300 text-purple-700" onClick={() => {
                               setSelectedProjectForUsedMaterial(project.id)
                               setSelectedMaterialForUsedMaterial('')
@@ -1963,7 +1963,7 @@ export default function Home() {
                               <Plus className="w-4 h-4" /> {language === 'ar' ? 'مواد مستعملة' : 'Used'}
                             </Button>
                           )}
-                          {((currentUser?.role === 'general_manager') || (currentUser?.role === 'executive_manager' && project.createdById === currentUser?.id)) && (
+                          {((currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') || (currentUser?.role === 'executive_manager' && project.createdById === currentUser?.id)) && (
                             <Button variant="outline" size="sm" className="gap-1 text-red-600 hover:text-red-700" onClick={() => handleDeleteProject(project.id)}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -3003,7 +3003,7 @@ export default function Home() {
             </div>
           </TabsContent>
 
-          {currentUser?.role === 'general_manager' && (
+          {(currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && (
             <TabsContent value="users" className="space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-amber-900">{language === 'ar' ? 'إدارة المستخدمين' : 'User Management'} ({users.length})</h2>
@@ -3025,12 +3025,14 @@ export default function Home() {
                       {users.map(user => {
                         const roleLabels: Record<string, string> = {
                           general_manager: 'مدير عام',
+                          maintenance: 'صيانة',
                           executive_manager: 'مسؤول تنفيذي',
                           supervisor: 'مشرف',
                           store_keeper: 'ستور كيبر',
                         }
                         const roleColors: Record<string, string> = {
                           general_manager: 'bg-red-100 text-red-800',
+                          maintenance: 'bg-orange-100 text-orange-800',
                           executive_manager: 'bg-blue-100 text-blue-800',
                           supervisor: 'bg-green-100 text-green-800',
                           store_keeper: 'bg-purple-100 text-purple-800',
@@ -3086,6 +3088,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="general_manager">مدير عام</SelectItem>
+                                  <SelectItem value="maintenance">صيانة</SelectItem>
                                   <SelectItem value="executive_manager">مسؤول تنفيذي</SelectItem>
                                   <SelectItem value="supervisor">مشرف</SelectItem>
                                   <SelectItem value="store_keeper">ستور كيبر</SelectItem>
@@ -3102,7 +3105,7 @@ export default function Home() {
                                 <Button variant="outline" size="sm" onClick={() => handleToggleUserStatus(user)}>
                                   {user.status === 'suspended' ? (language === 'ar' ? 'تفعيل' : 'Activate') : (language === 'ar' ? 'تعليق' : 'Suspend')}
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user.id)} disabled={user.role === 'general_manager'}>
+                                <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user.id)} disabled={user.role === 'general_manager' || user.role === 'maintenance'}>
                                   <Trash2 className="w-4 h-4 text-red-500" />
                                 </Button>
                               </div>

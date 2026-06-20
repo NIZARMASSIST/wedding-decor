@@ -79,3 +79,9 @@ export function safeErrorResponse(error: unknown, defaultMessage: string): { err
   console.error('Internal error:', error)
   return { error: defaultMessage }
 }
+
+// Check if role has full admin permissions (general_manager OR maintenance)
+// Both roles have identical full permissions across the entire app
+export function isFullAdmin(role: string): boolean {
+  return role === 'general_manager' || role === 'maintenance'
+}
