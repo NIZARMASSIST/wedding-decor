@@ -20,12 +20,13 @@ import {
   Globe, Paperclip, Download, Eye, Play, CheckCircle2,
   FolderOpen, BarChart3, PieChart, LogOut, User, Upload,
   Search, Filter, Box, X, LayoutGrid, List, ImageIcon,
-  MapPin, UserCheck, ClipboardList, MessageCircle, HelpCircle
+  MapPin, UserCheck, ClipboardList, MessageCircle, HelpCircle, Calculator
 
 } from 'lucide-react'
 import MaterialsTab from '@/components/MaterialsTab'
 import ChatSidebar from '@/components/ChatSidebar'
 import HelpCenter from '@/components/HelpCenter'
+import DesignCostCalculator from '@/components/DesignCostCalculator'
 import { toast } from 'sonner'
 import { translations, Language } from '@/lib/i18n'
 
@@ -1397,6 +1398,7 @@ export default function Home() {
             <TabsTrigger value="stages" className="gap-2"><Settings className="w-4 h-4" /> {t.nav_stages}</TabsTrigger>
             <TabsTrigger value="schedule" className="gap-2"><Calendar className="w-4 h-4" /> {t.nav_schedule}</TabsTrigger>
             <TabsTrigger value="charts" className="gap-2"><BarChart3 className="w-4 h-4" /> {language === 'ar' ? 'الرسوم البيانية' : 'Charts'}</TabsTrigger>
+            <TabsTrigger value="calculator" className="gap-2"><Calculator className="w-4 h-4" /> {language === 'ar' ? 'حاسبة التكلفة' : 'Cost Calculator'}</TabsTrigger>
             <TabsTrigger value="departments" className="gap-2"><Users className="w-4 h-4" /> {t.nav_departments}</TabsTrigger>
             {(currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && (
               <TabsTrigger value="users" className="gap-2">
@@ -2935,6 +2937,11 @@ export default function Home() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* تبويب حاسبة التكلفة */}
+          <TabsContent value="calculator" className="space-y-4">
+            <DesignCostCalculator language={language} />
           </TabsContent>
 
           {/* تبويب الأقسام */}
