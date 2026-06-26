@@ -297,6 +297,7 @@ export default function Home() {
   const [newMaterialQuantity, setNewMaterialQuantity] = useState(1)
   const [materialSearchQuery, setMaterialSearchQuery] = useState('')
   const [expandedProjectMaterials, setExpandedProjectMaterials] = useState<string>('')
+  const [expandedUsedMaterials, setExpandedUsedMaterials] = useState<string>('')
   const [projectViewMode, setProjectViewMode] = useState<'grid' | 'list' | 'gallery'>('grid')
   const [itemViewMode, setItemViewMode] = useState<'grid' | 'list' | 'gallery'>('grid')
   const [itemProjectFilter, setItemProjectFilter] = useState<string>('all')
@@ -497,6 +498,42 @@ export default function Home() {
       }
     } catch (error) {
       toast.error(t.msg_error)
+    }
+  }
+
+  // تنزيل المواد المستعملة لمشروع محدد إلى Excel
+  const handleExportUsedMaterials = async (projectId: string) => {
+    try {
+      toast.loading(language === 'ar' ? 'جاري إنشاء الملف...' : 'Generating file...', { id: 'export-um' })
+      const res = await fetch(`/api/materials/export-used?projectId=${projectId}`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Export failed')
+      }
+      const blob = await res.blob()
+      // استخراج اسم الملف من Content-Disposition
+      const cd = res.headers.get('Content-Disposition') || ''
+      const match = cd.match(/filename="?([^"]+)"?/)
+      const filename = match ? decodeURIComponent(match[1]) : `used-materials-${projectId}.xlsx`
+
+      // تنزيل
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success(language === 'ar' ? 'تم تنزيل الملف' : 'File downloaded', { id: 'export-um' })
+    } catch (error: any) {
+      console.error('export error:', error)
+      toast.error(
+        error.message === 'No used materials found'
+          ? (language === 'ar' ? 'لا توجد مواد مستعملة لهذا المشروع' : 'No used materials for this project')
+          : (language === 'ar' ? 'فشل التصدير' : 'Export failed'),
+        { id: 'export-um' }
+      )
     }
   }
 
@@ -1606,7 +1643,17 @@ export default function Home() {
                         {/* المواد المستعملة */}
                         {(usedMaterialsMap[project.id] || []).length > 0 && (
                           <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded-md">
-                            <p className="text-xs font-semibold text-purple-700 mb-1">{language === 'ar' ? 'المواد المستعملة' : 'Used Materials'}:</p>
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-xs font-semibold text-purple-700">{language === 'ar' ? 'المواد المستعملة' : 'Used Materials'}:</p>
+                              <button
+                                onClick={() => handleExportUsedMaterials(project.id)}
+                                className="inline-flex items-center gap-1 text-[10px] text-green-700 hover:text-green-900 hover:bg-green-100 px-1.5 py-0.5 rounded transition-colors"
+                                title={language === 'ar' ? 'تنزيل Excel' : 'Export Excel'}
+                              >
+                                <Download className="w-3 h-3" />
+                                Excel
+                              </button>
+                            </div>
                             <div className="space-y-1">
                               {(usedMaterialsMap[project.id] || []).map((um: any) => (
                                 <div key={um.id} className="flex items-center justify-between text-xs">
@@ -1939,6 +1986,167 @@ export default function Home() {
                                       >
                                         <Plus className="w-3 h-3" /> {language === 'ar' ? 'إضافة مادة أولى' : 'Add First Material'}
                                       </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })()}
+
+                        {/* المواد المستعملة — تحت المواد المطلوبة مباشرة */}
+                        {(() => {
+                          const ums = usedMaterialsMap[project.id] || []
+                          const canManageUsed =
+                            currentUser?.role === 'store_keeper' ||
+                            currentUser?.role === 'general_manager' ||
+                            currentUser?.role === 'maintenance'
+                          const totalUsedCost = ums.reduce((sum: number, um: any) =>
+                            sum + ((um.material?.unitPrice ?? 0) * um.quantity), 0)
+
+                          return (
+                            <div className="border-t pt-2">
+                              <div
+                                className="flex items-center justify-between cursor-pointer hover:bg-purple-50/50 rounded px-1 py-1 transition-colors"
+                                onClick={() => {
+                                  const newVal = expandedUsedMaterials === project.id ? '' : project.id
+                                  setExpandedUsedMaterials(newVal)
+                                  if (newVal) fetchUsedMaterials(project.id)
+                                }}
+                              >
+                                <div className="flex items-center gap-2 text-sm font-medium text-purple-800">
+                                  <Package className="w-4 h-4" />
+                                  <span>{language === 'ar' ? 'المواد المستعملة' : 'Used Materials'}</span>
+                                  <Badge variant="outline" className="text-xs border-purple-300 text-purple-700">{ums.length}</Badge>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {totalUsedCost > 0 && (
+                                    <span className="text-xs font-bold text-purple-700">
+                                      {totalUsedCost.toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}
+                                    </span>
+                                  )}
+                                  {expandedUsedMaterials === project.id
+                                    ? <ChevronUp className="w-4 h-4" />
+                                    : <ChevronDown className="w-4 h-4" />}
+                                </div>
+                              </div>
+
+                              {expandedUsedMaterials === project.id && (
+                                <div className="mt-2 space-y-2">
+                                  {ums.length > 0 ? (
+                                    <>
+                                      <Table>
+                                        <TableHeader>
+                                          <TableRow className="bg-purple-50">
+                                            <TableHead className="text-xs py-1">{language === 'ar' ? 'المادة' : 'Material'}</TableHead>
+                                            <TableHead className="text-xs py-1">{language === 'ar' ? 'الكمية' : 'Qty'}</TableHead>
+                                            <TableHead className="text-xs py-1">{language === 'ar' ? 'السعر' : 'Price'}</TableHead>
+                                            <TableHead className="text-xs py-1">{language === 'ar' ? 'الإجمالي' : 'Total'}</TableHead>
+                                            <TableHead className="text-xs py-1">{language === 'ar' ? 'أضيفت بواسطة' : 'Added By'}</TableHead>
+                                            <TableHead className="text-xs py-1 w-8"></TableHead>
+                                          </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {ums.map((um: any) => (
+                                            <TableRow key={um.id}>
+                                              <TableCell className="text-xs py-1 font-medium">
+                                                {um.material?.nameAr || um.material?.name || '-'}
+                                                {um.notes && (
+                                                  <p className="text-[10px] text-gray-400 italic mt-0.5">{um.notes}</p>
+                                                )}
+                                              </TableCell>
+                                              <TableCell className="text-xs py-1">
+                                                {um.quantity} {um.material?.unitAr || um.material?.unit || ''}
+                                              </TableCell>
+                                              <TableCell className="text-xs py-1">{(um.material?.unitPrice || 0).toFixed(2)}</TableCell>
+                                              <TableCell className="text-xs py-1 font-bold text-purple-700">
+                                                {((um.material?.unitPrice || 0) * um.quantity).toFixed(2)}
+                                              </TableCell>
+                                              <TableCell className="text-xs py-1 text-gray-500">
+                                                {um.addedBy?.name || '-'}
+                                              </TableCell>
+                                              <TableCell className="text-xs py-1">
+                                                {canManageUsed && (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-6 w-6"
+                                                    onClick={() => handleRemoveUsedMaterial(um.id, project.id)}
+                                                  >
+                                                    <X className="w-3 h-3 text-red-500" />
+                                                  </Button>
+                                                )}
+                                              </TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                        <tfoot>
+                                          <TableRow className="bg-purple-50">
+                                            <TableCell colSpan={3} className="text-xs py-1 font-bold">
+                                              {language === 'ar' ? 'الإجمالي' : 'Total'}
+                                            </TableCell>
+                                            <TableCell className="text-xs py-1 font-bold text-purple-700">
+                                              {totalUsedCost.toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}
+                                            </TableCell>
+                                            <TableCell colSpan={2}></TableCell>
+                                          </TableRow>
+                                        </tfoot>
+                                      </Table>
+
+                                      <div className="flex gap-2 flex-wrap">
+                                        {canManageUsed && (
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="gap-1 flex-1 text-xs bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100"
+                                            onClick={() => {
+                                              setSelectedProjectForUsedMaterial(project.id)
+                                              setSelectedMaterialForUsedMaterial('')
+                                              setNewUsedMaterialQuantity(1)
+                                              setUsedMaterialNotes('')
+                                              setUsedMaterialSearchQuery('')
+                                              setAddUsedMaterialOpen(true)
+                                            }}
+                                          >
+                                            <Plus className="w-3 h-3" />
+                                            {language === 'ar' ? 'إضافة مادة مستعملة' : 'Add Used Material'}
+                                          </Button>
+                                        )}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="gap-1 text-xs bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                                          onClick={() => handleExportUsedMaterials(project.id)}
+                                          title={language === 'ar' ? 'تنزيل Excel' : 'Download Excel'}
+                                        >
+                                          <Download className="w-3 h-3" />
+                                          {language === 'ar' ? 'تنزيل Excel' : 'Export Excel'}
+                                        </Button>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="text-center py-3 space-y-2">
+                                      <p className="text-xs text-gray-400">
+                                        {language === 'ar' ? 'لا توجد مواد مستعملة مسجلة' : 'No used materials recorded'}
+                                      </p>
+                                      {canManageUsed && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="gap-1 text-xs bg-purple-50 border-purple-300 text-purple-700"
+                                          onClick={() => {
+                                            setSelectedProjectForUsedMaterial(project.id)
+                                            setSelectedMaterialForUsedMaterial('')
+                                            setNewUsedMaterialQuantity(1)
+                                            setUsedMaterialNotes('')
+                                            setUsedMaterialSearchQuery('')
+                                            setAddUsedMaterialOpen(true)
+                                          }}
+                                        >
+                                          <Plus className="w-3 h-3" />
+                                          {language === 'ar' ? 'تسجيل أول مادة مستعملة' : 'Record First Used Material'}
+                                        </Button>
+                                      )}
                                     </div>
                                   )}
                                 </div>
