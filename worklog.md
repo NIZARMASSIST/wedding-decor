@@ -173,3 +173,54 @@ Stage Summary:
 - المشكلة: التعديلات لم تُنشر على Vercel الإنتاجي بسبب انتهاء صلاحية توكين GitHub
 - المطلوب من المستخدم: إما تزويدنا بتوكين GitHub جديد (github_pat_...) أو VERCEL_TOKEN لنشر التعديلات
 - أو يمكن للمستخدم يدوياً عمل: git push من جهازه الشخصي بعد سحب التعديلات المحلية
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: إضافة ميزة "نسيت كلمة المرور؟" كاملة مع إرسال البريد الفعلي عبر Gmail SMTP
+
+Work Log:
+- إنشاء src/lib/email.ts:
+  * خادم SMTP يستخدم nodemailer مع خدمة Gmail
+  * يقرأ بيانات الاعتماد من متغيرات البيئة (GMAIL_USER, GMAIL_APP_PASSWORD)
+  * قالب بريد HTML احترافي بتصميم "الوان الخليج" - ألوان ذهبية/برتقالية، RTL، شعار
+  * صندوق عرض كلمة المرور بحدّ متقطّع (dashed border) - سهل القراءة
+  * تحذيرات أمنية داخل البريد نفسه
+  * رابط تسجيل الدخول
+- إنشاء src/app/api/auth/forgot-password/route.ts:
+  * POST /api/auth/forgot-password - يستقبل {email}
+  * Rate limiting مزدوج: 5 طلبات/بريد/ساعة + 20 طلب/IP/ساعة
+  * استجابة عامة موحّدة لكل الحالات (لا يكشف وجود البريد)
+  * يستخدم decryptPassword لفك تشفير كلمة المرور الحالية
+  * لا يرسل بريداً إذا: البريد غير موجود / الحساب غير نشط / كلمة المرور غير متوفرة
+  * يسجّل كل عملية في سجل الخادم (audit trail)
+- التحقق من صفحة /forgot-password: كانت موجودة مسبقاً بواجهة كاملة (عربية + إنجليزية)
+- التحقق من زر "نسيت كلمة المرور؟" في صفحة تسجيل الدخول: كان موجوداً مسبقاً
+- إضافة متغيرات البيئة على Vercel:
+  * GMAIL_USER = 98906933n@gmail.com
+  * GMAIL_APP_PASSWORD = pphlhtbyeuemdkrq (16-char app password)
+  * NEXT_PUBLIC_APP_URL = https://my-project-tau-hazel.vercel.app
+- النشر على Vercel production (https://my-project-tau-hazel.vercel.app)
+
+الاختبار الفعلي:
+- ✅ POST /api/auth/forgot-password ببريد مستخدم صحيح (yahya@gmail.com) → 200 + إرسال بريد فعلي
+- ✅ messageId في سجل الخادم: <a0672cb3-bdf1-2449-aee2-d1963667bf93@gmail.com>
+- ✅ البريد يصل إلى yahya@gmail.com (مرسل من 98906933n@gmail.com - يجب فحص مجلد Sent في Gmail)
+- ✅ POST ببريد مستخدم بدون كلمة مرور قابلة للعرض → 200 + رسالة عامة (بدون إرسال)
+- ✅ POST ببريد غير موجود → 200 + رسالة عامة (بدون إرسال)
+- ✅ POST ببريد غير صحيح الصيغة → 400
+- ✅ Rate limit: 5 طلبات ناجحة ثم 429 في الطلب السادس
+- ✅ GET /forgot-password → 200 (صفحة كاملة مع شعار وعنوان ونموذج)
+
+Stage Summary:
+- الميزة تعمل بالكامل في الإنتاج على Vercel
+- المستخدم يمكنه النقر على "نسيت كلمة المرور؟" في صفحة تسجيل الدخول
+- يدخل بريده → يستقبل بريداً بكلمة المرور الحالية (إذا كانت متوفرة)
+- الحسابات الإدارية (مدير عام / صيانة) لا يمكن استرجاع كلمات مرورها بالبريد (الحقل passwordEncrypted غير مُخزّن لها)
+- المستخدمون القدامى الذين لم يسجّلوا الدخول بعد تفعيل ميزة عرض كلمات المرور لن يستلموا بريداً حتى يسجّلوا الدخول مرة واحدة (سيتم تخزين النسخة المشفّرة تلقائياً)
+- ملفات جديدة/معدلة:
+  * src/lib/email.ts (جديد)
+  * src/app/api/auth/forgot-password/route.ts (جديد)
+  * src/app/forgot-password/page.tsx (موجود مسبقاً)
+  * src/app/(auth)/login/page.tsx (موجود مسبقاً - الرابط موجود)
+- متغيرات البيئة على Vercel: GMAIL_USER, GMAIL_APP_PASSWORD, NEXT_PUBLIC_APP_URL
