@@ -2,6 +2,35 @@ import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser, isFullAdmin } from '@/lib/auth'
 
+// دالة مساعدة لإرسال إشعار لمنشئ المشروع عند التعديل من قبل مسؤول تنفيذي
+async function notifyProjectOwner(projectId: string, editorName: string, editorRole: string, action: string, entity: string) {
+  try {
+    const project = await db.project.findUnique({
+      where: { id: projectId },
+      select: { nameAr: true, name: true, createdById: true }
+    })
+    if (!project || !project.createdById) return
+
+    const projectName = project?.nameAr || project?.name || 'مشروع'
+    const roleLabel = editorRole === 'executive_manager' ? 'مسؤول تنفيذي' : editorRole
+
+    const title = `تعديل في مشروعك بواسطة ${roleLabel}`
+    const message = `قام ${roleLabel} "${editorName}" بـ${action} على ${entity} في مشروعك "${projectName}"`
+
+    await db.notification.create({
+      data: {
+        userId: project.createdById,
+        projectId,
+        title,
+        message,
+        type: 'change',
+      }
+    })
+  } catch (error) {
+    console.error('Error notifying project owner:', error)
+  }
+}
+
 // GET - جلب جميع المواد
 export async function GET(request: NextRequest) {
   try {
@@ -179,10 +208,10 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json()
 
-    // === إضافة مادة مستعملة للمشروع (ستور كيبر فقط) ===
+    // === إضافة مادة مستعملة للمشروع (ستور كيبر + مسؤول تنفيذي + الإدارة) ===
     if (body.action === 'addUsedMaterial') {
-      if (session.role !== 'store_keeper' && !isFullAdmin(session.role)) {
-        return NextResponse.json({ error: 'فقط الستور كيبر يمكنه إضافة المواد المستعملة' }, { status: 403 })
+      if (session.role !== 'store_keeper' && session.role !== 'executive_manager' && !isFullAdmin(session.role)) {
+        return NextResponse.json({ error: 'فقط الستور كيبر أو المسؤول التنفيذي يمكنه إضافة المواد المستعملة' }, { status: 403 })
       }
 
       const { projectId, materialId, quantity, notes } = body
@@ -206,6 +235,14 @@ export async function PUT(request: NextRequest) {
           },
           include: { material: true, addedBy: { select: { id: true, name: true } } }
         })
+        // إشعار لمنشئ المشروع إذا كان المعدّل مسؤول تنفيذي وليس هو المنشئ
+        if (session.role === 'executive_manager') {
+          const project = await db.project.findUnique({ where: { id: projectId }, select: { createdById: true } })
+          const user = await db.user.findUnique({ where: { id: session.userId }, select: { name: true } })
+          if (project && project.createdById !== session.userId) {
+            await notifyProjectOwner(projectId, user?.name || 'مسؤول تنفيذي', 'executive_manager', 'إضافة/تعديل', 'مادة مستعملة')
+          }
+        }
         return NextResponse.json(updated)
       }
 
@@ -219,39 +256,57 @@ export async function PUT(request: NextRequest) {
         },
         include: { material: true, addedBy: { select: { id: true, name: true } } }
       })
+      // إشعار لمنشئ المشروع إذا كان المعدّل مسؤول تنفيذي وليس هو المنشئ
+      if (session.role === 'executive_manager') {
+        const project = await db.project.findUnique({ where: { id: projectId }, select: { createdById: true } })
+        const user = await db.user.findUnique({ where: { id: session.userId }, select: { name: true } })
+        if (project && project.createdById !== session.userId) {
+          await notifyProjectOwner(projectId, user?.name || 'مسؤول تنفيذي', 'executive_manager', 'إضافة', 'مادة مستعملة')
+        }
+      }
       return NextResponse.json(usedMaterial)
     }
 
-    // === إزالة مادة مستعملة من المشروع (ستور كيبر فقط) ===
+    // === إزالة مادة مستعملة من المشروع (ستور كيبر + مسؤول تنفيذي + الإدارة) ===
     if (body.action === 'removeUsedMaterial') {
-      if (session.role !== 'store_keeper' && !isFullAdmin(session.role)) {
-        return NextResponse.json({ error: 'فقط الستور كيبر يمكنه إزالة المواد المستعملة' }, { status: 403 })
+      if (session.role !== 'store_keeper' && session.role !== 'executive_manager' && !isFullAdmin(session.role)) {
+        return NextResponse.json({ error: 'فقط الستور كيبر أو المسؤول التنفيذي يمكنه إزالة المواد المستعملة' }, { status: 403 })
       }
 
       const { id } = body
       if (!id) {
         return NextResponse.json({ error: 'معرف المادة المستعملة مطلوب' }, { status: 400 })
       }
+      // جلب معلومات المادة قبل حذفها لإرسال الإشعار
+      const usedMat = await db.usedMaterial.findUnique({ where: { id }, select: { projectId: true } })
       await db.usedMaterial.delete({ where: { id } })
+      // إشعار لمنشئ المشروع إذا كان المعدّل مسؤول تنفيذي وليس هو المنشئ
+      if (session.role === 'executive_manager' && usedMat) {
+        const project = await db.project.findUnique({ where: { id: usedMat.projectId }, select: { createdById: true } })
+        const user = await db.user.findUnique({ where: { id: session.userId }, select: { name: true } })
+        if (project && project.createdById !== session.userId) {
+          await notifyProjectOwner(usedMat.projectId, user?.name || 'مسؤول تنفيذي', 'executive_manager', 'حذف', 'مادة مستعملة')
+        }
+      }
       return NextResponse.json({ success: true })
     }
 
     // === إضافة مادة مطلوبة للمشروع ===
-    // منشئ المشروع فقط يمكنه إضافة المواد المطلوبة
+    // منشئ المشروع + المسؤول التنفيذي + المدير العام يمكنهم إضافة المواد المطلوبة
     if (body.action === 'addToProject') {
       const { projectId, materialId, quantity, notes } = body
       if (!projectId || !materialId) {
         return NextResponse.json({ error: 'Project ID and Material ID are required' }, { status: 400 })
       }
 
-      // التحقق من الصلاحية: منشئ المشروع أو المدير العام
+      // التحقق من الصلاحية: منشئ المشروع أو المدير العام أو المسؤول التنفيذي
       const project = await db.project.findUnique({ where: { id: projectId } })
       if (!project) {
         return NextResponse.json({ error: 'المشروع غير موجود' }, { status: 404 })
       }
 
-      if (!isFullAdmin(session.role) && project.createdById !== session.userId) {
-        return NextResponse.json({ error: 'فقط منشئ المشروع يمكنه إضافة المواد المطلوبة' }, { status: 403 })
+      if (!isFullAdmin(session.role) && session.role !== 'executive_manager' && project.createdById !== session.userId) {
+        return NextResponse.json({ error: 'فقط منشئ المشروع أو المسؤول التنفيذي يمكنه إضافة المواد المطلوبة' }, { status: 403 })
       }
 
       const existing = await db.projectMaterial.findUnique({
@@ -264,6 +319,11 @@ export async function PUT(request: NextRequest) {
           data: { quantity: quantity || existing.quantity, notes: notes || existing.notes },
           include: { material: true }
         })
+        // إشعار لمنشئ المشروع إذا كان المعدّل مسؤول تنفيذي وليس هو المنشئ
+        if (session.role === 'executive_manager' && project.createdById !== session.userId) {
+          const user = await db.user.findUnique({ where: { id: session.userId }, select: { name: true } })
+          await notifyProjectOwner(projectId, user?.name || 'مسؤول تنفيذي', 'executive_manager', 'تعديل', 'مادة مطلوبة')
+        }
         return NextResponse.json(updated)
       }
 
@@ -271,6 +331,11 @@ export async function PUT(request: NextRequest) {
         data: { projectId, materialId, quantity: quantity || 0, notes },
         include: { material: true }
       })
+      // إشعار لمنشئ المشروع إذا كان المعدّل مسؤول تنفيذي وليس هو المنشئ
+      if (session.role === 'executive_manager' && project.createdById !== session.userId) {
+        const user = await db.user.findUnique({ where: { id: session.userId }, select: { name: true } })
+        await notifyProjectOwner(projectId, user?.name || 'مسؤول تنفيذي', 'executive_manager', 'إضافة', 'مادة مطلوبة')
+      }
       return NextResponse.json(projectMaterial)
     }
 
@@ -284,8 +349,13 @@ export async function PUT(request: NextRequest) {
       // التحقق من الصلاحية
       if (projectId) {
         const project = await db.project.findUnique({ where: { id: projectId } })
-        if (project && !isFullAdmin(session.role) && project.createdById !== session.userId) {
-          return NextResponse.json({ error: 'فقط منشئ المشروع يمكنه إزالة المواد المطلوبة' }, { status: 403 })
+        if (project && !isFullAdmin(session.role) && session.role !== 'executive_manager' && project.createdById !== session.userId) {
+          return NextResponse.json({ error: 'فقط منشئ المشروع أو المسؤول التنفيذي يمكنه إزالة المواد المطلوبة' }, { status: 403 })
+        }
+        // إشعار لمنشئ المشروع إذا كان المعدّل مسؤول تنفيذي وليس هو المنشئ
+        if (session.role === 'executive_manager' && project && project.createdById !== session.userId) {
+          const user = await db.user.findUnique({ where: { id: session.userId }, select: { name: true } })
+          await notifyProjectOwner(projectId, user?.name || 'مسؤول تنفيذي', 'executive_manager', 'حذف', 'مادة مطلوبة')
         }
       }
 

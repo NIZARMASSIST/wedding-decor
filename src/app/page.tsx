@@ -20,7 +20,8 @@ import {
   Globe, Paperclip, Download, Eye, Play, CheckCircle2,
   FolderOpen, BarChart3, PieChart, LogOut, User, Upload,
   Search, Filter, Box, X, LayoutGrid, List, ImageIcon,
-  MapPin, UserCheck, ClipboardList, MessageCircle, HelpCircle, Calculator
+  MapPin, UserCheck, ClipboardList, MessageCircle, HelpCircle, Calculator,
+  KeyRound, EyeOff, ShieldAlert, Copy
 
 } from 'lucide-react'
 import MaterialsTab from '@/components/MaterialsTab'
@@ -316,6 +317,17 @@ export default function Home() {
   const [usedMaterialSearchQuery, setUsedMaterialSearchQuery] = useState('')
   const [editingUserField, setEditingUserField] = useState<{userId: string, field: 'name' | 'phone'} | null>(null)
   const [editUserValue, setEditUserValue] = useState('')
+  // إعادة تعيين كلمة المرور من حساب الصيانة
+  const [resetPasswordUser, setResetPasswordUser] = useState<{id: string, name: string, email: string, role: string} | null>(null)
+  const [newPasswordValue, setNewPasswordValue] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false)
+  // عرض كلمة المرور من حساب الصيانة/المدير العام
+  const [viewPasswordUser, setViewPasswordUser] = useState<{id: string, name: string, email: string, role: string} | null>(null)
+  const [viewedPassword, setViewedPassword] = useState<string | null>(null)
+  const [viewPasswordLoading, setViewPasswordLoading] = useState(false)
+  const [viewPasswordOpen, setViewPasswordOpen] = useState(false)
+  const [viewPasswordError, setViewPasswordError] = useState<string | null>(null)
   const [chatOpen, setChatOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
 
@@ -1195,6 +1207,74 @@ export default function Home() {
     }
   }
 
+  // إعادة تعيين كلمة المرور من حساب الصيانة/المدير العام
+  const handleResetPassword = async () => {
+    if (!resetPasswordUser) return
+    if (!newPasswordValue || newPasswordValue.length < 6) {
+      toast.error(language === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters')
+      return
+    }
+    setResetPasswordLoading(true)
+    try {
+      const res = await fetch('/api/users/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: resetPasswordUser.id, newPassword: newPasswordValue })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(data.message || (language === 'ar' ? 'تم إعادة تعيين كلمة المرور بنجاح' : 'Password reset successfully'))
+        setResetPasswordUser(null)
+        setNewPasswordValue('')
+        setShowNewPassword(false)
+      } else {
+        toast.error(data.error || (language === 'ar' ? 'فشل في إعادة تعيين كلمة المرور' : 'Failed to reset password'))
+      }
+    } catch (error) {
+      toast.error(t.msg_error)
+    } finally {
+      setResetPasswordLoading(false)
+    }
+  }
+
+  // عرض كلمة المرور الحالية من حساب الصيانة/المدير العام
+  const handleViewPassword = async (user: {id: string, name: string, email: string, role: string}) => {
+    setViewPasswordUser(user)
+    setViewedPassword(null)
+    setViewPasswordError(null)
+    setViewPasswordOpen(true)
+    setViewPasswordLoading(true)
+    try {
+      const res = await fetch(`/api/users/view-password?userId=${encodeURIComponent(user.id)}`, { method: 'GET' })
+      const data = await res.json()
+      if (res.ok) {
+        setViewedPassword(data.password) // قد يكون null للمستخدمين القدامى
+        if (data.password === null || data.password === undefined) {
+          setViewPasswordError(language === 'ar'
+            ? 'لا توجد نسخة قابلة للعرض لكلمة مرور هذا المستخدم بعد. اطلب منه تسجيل الدخول مرة واحدة، أو أعد تعيين كلمة المرور لتصبح قابلة للعرض.'
+            : 'No viewable password stored yet for this user. Ask them to sign in once, or reset their password to make it viewable.')
+        }
+      } else {
+        setViewPasswordError(data.error || (language === 'ar' ? 'فشل في عرض كلمة المرور' : 'Failed to view password'))
+      }
+    } catch (error) {
+      setViewPasswordError(t.msg_error)
+    } finally {
+      setViewPasswordLoading(false)
+    }
+  }
+
+  // نسخ كلمة المرور المعروضة إلى الحافظة
+  const handleCopyPassword = async () => {
+    if (!viewedPassword) return
+    try {
+      await navigator.clipboard.writeText(viewedPassword)
+      toast.success(language === 'ar' ? 'تم نسخ كلمة المرور' : 'Password copied to clipboard')
+    } catch {
+      toast.error(language === 'ar' ? 'تعذّر النسخ' : 'Copy failed')
+    }
+  }
+
   // تصدير Excel أو PDF (عام أو حسب المشروع)
   const handleExport = async (projectId?: string, format: 'xlsx' | 'html' = 'xlsx') => {
     try {
@@ -1679,12 +1759,11 @@ export default function Home() {
                         {/* أزرار */}
                         <div className="flex gap-2 pt-2 border-t print:hidden">
                           {currentUser?.role !== 'store_keeper' && (
-                            <Button variant="outline" size="sm" className="gap-1 flex-1 h-8 text-xs" onClick={() => { setEditingProject(project); setEditProjectOpen(true) }}
-                              disabled={currentUser?.role === 'executive_manager' && project.createdById !== currentUser?.id}>
+                            <Button variant="outline" size="sm" className="gap-1 flex-1 h-8 text-xs" onClick={() => { setEditingProject(project); setEditProjectOpen(true) }}>
                               <Edit className="w-3.5 h-3.5" /> {t.btn_edit}
                             </Button>
                           )}
-                          {(project.createdById === currentUser?.id || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && currentUser?.role !== 'store_keeper' && (
+                          {(project.createdById === currentUser?.id || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'executive_manager') && currentUser?.role !== 'store_keeper' && (
                             <Button variant="outline" size="sm" className="gap-1 h-8 text-xs" onClick={() => {
                               setSelectedProjectForMaterial(project.id)
                               setSelectedMaterialForProject('')
@@ -1694,7 +1773,7 @@ export default function Home() {
                               <Plus className="w-3.5 h-3.5" /> {language === 'ar' ? 'مواد مطلوبة' : 'Materials'}
                             </Button>
                           )}
-                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && (
+                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'executive_manager') && (
                             <Button variant="outline" size="sm" className="gap-1 h-8 text-xs bg-purple-50 border-purple-300 text-purple-700" onClick={() => {
                               setSelectedProjectForUsedMaterial(project.id)
                               setSelectedMaterialForUsedMaterial('')
@@ -1706,7 +1785,7 @@ export default function Home() {
                               <Plus className="w-3.5 h-3.5" /> {language === 'ar' ? 'مواد مستعملة' : 'Used'}
                             </Button>
                           )}
-                          {((currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') || (currentUser?.role === 'executive_manager' && project.createdById === currentUser?.id)) && (
+                          {((currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'executive_manager')) && (
                             <Button variant="outline" size="sm" className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteProject(project.id)}>
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
@@ -1773,9 +1852,9 @@ export default function Home() {
                         {/* أزرار */}
                         <div className="flex items-center gap-1 print:hidden flex-shrink-0">
                           {currentUser?.role !== 'store_keeper' && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingProject(project); setEditProjectOpen(true) }} disabled={currentUser?.role === 'executive_manager' && project.createdById !== currentUser?.id}><Edit className="w-4 h-4 text-blue-500" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingProject(project); setEditProjectOpen(true) }}><Edit className="w-4 h-4 text-blue-500" /></Button>
                           )}
-                          {(project.createdById === currentUser?.id || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && currentUser?.role !== 'store_keeper' && (
+                          {(project.createdById === currentUser?.id || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'executive_manager') && currentUser?.role !== 'store_keeper' && (
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
                               setSelectedProjectForMaterial(project.id)
                               setSelectedMaterialForProject('')
@@ -1783,7 +1862,7 @@ export default function Home() {
                               setAddMaterialToProjectOpen(true)
                             }}><Box className="w-4 h-4 text-amber-600" /></Button>
                           )}
-                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && (
+                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'executive_manager') && (
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
                               setSelectedProjectForUsedMaterial(project.id)
                               setSelectedMaterialForUsedMaterial('')
@@ -1793,7 +1872,7 @@ export default function Home() {
                               setAddUsedMaterialOpen(true)
                             }}><Box className="w-4 h-4 text-purple-600" /></Button>
                           )}
-                          {((currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') || (currentUser?.role === 'executive_manager' && project.createdById === currentUser?.id)) && (
+                          {((currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'executive_manager')) && (
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteProject(project.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                           )}
                         </div>
@@ -1804,7 +1883,8 @@ export default function Home() {
                         const canManageUsed =
                           currentUser?.role === 'store_keeper' ||
                           currentUser?.role === 'general_manager' ||
-                          currentUser?.role === 'maintenance'
+                          currentUser?.role === 'maintenance' ||
+                          currentUser?.role === 'executive_manager'
                         const totalUsedCost = ums.reduce((sum: number, um: any) =>
                           sum + ((um.material?.unitPrice ?? 0) * um.quantity), 0)
                         return (
@@ -2155,7 +2235,8 @@ export default function Home() {
                           const canManageUsed =
                             currentUser?.role === 'store_keeper' ||
                             currentUser?.role === 'general_manager' ||
-                            currentUser?.role === 'maintenance'
+                            currentUser?.role === 'maintenance' ||
+                            currentUser?.role === 'executive_manager'
                           const totalUsedCost = ums.reduce((sum: number, um: any) =>
                             sum + ((um.material?.unitPrice ?? 0) * um.quantity), 0)
 
@@ -2312,11 +2393,11 @@ export default function Home() {
 
                         <div className="flex gap-2 pt-2 border-t print:hidden">
                           {currentUser?.role !== 'store_keeper' && (
-                            <Button variant="outline" size="sm" className="gap-1 flex-1" onClick={() => { setEditingProject(project); setEditProjectOpen(true) }} disabled={currentUser?.role === 'executive_manager' && project.createdById !== currentUser?.id}>
+                            <Button variant="outline" size="sm" className="gap-1 flex-1" onClick={() => { setEditingProject(project); setEditProjectOpen(true) }}>
                               <Edit className="w-4 h-4" /> {t.btn_edit}
                             </Button>
                           )}
-                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') && (
+                          {(currentUser?.role === 'store_keeper' || currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'executive_manager') && (
                             <Button variant="outline" size="sm" className="gap-1 bg-purple-50 border-purple-300 text-purple-700" onClick={() => {
                               setSelectedProjectForUsedMaterial(project.id)
                               setSelectedMaterialForUsedMaterial('')
@@ -2328,7 +2409,7 @@ export default function Home() {
                               <Plus className="w-4 h-4" /> {language === 'ar' ? 'مواد مستعملة' : 'Used'}
                             </Button>
                           )}
-                          {((currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance') || (currentUser?.role === 'executive_manager' && project.createdById === currentUser?.id)) && (
+                          {((currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'executive_manager')) && (
                             <Button variant="outline" size="sm" className="gap-1 text-red-600 hover:text-red-700" onClick={() => handleDeleteProject(project.id)}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -3378,6 +3459,15 @@ export default function Home() {
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-amber-900">{language === 'ar' ? 'إدارة المستخدمين' : 'User Management'} ({users.length})</h2>
               </div>
+              {/* تنبيه أمني حول كلمات المرور */}
+              <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-900 text-xs">
+                <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div>
+                  {language === 'ar'
+                    ? 'لكل مستخدم زران: "عرض" لرؤية كلمة المرور الحالية (مشفّرة قابلة للعكس بـ AES-256)، و"تعديل" لوضع كلمة مرور جديدة. لا يمكن عرض أو تعديل كلمات مرور الحسابات الإدارية (مدير عام / صيانة) لمنع تصعيد الصلاحيات.'
+                    : 'Each user has two buttons: "View" to reveal the current password (stored with reversible AES-256 encryption), and "Edit" to set a new one. Admin account passwords (general_manager / maintenance) cannot be viewed or reset, to prevent privilege escalation.'}
+                </div>
+              </div>
               <Card>
                 <CardContent className="p-0 overflow-x-auto">
                   <Table>
@@ -3471,7 +3561,37 @@ export default function Home() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 flex-wrap">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1 text-blue-700 border-blue-300 hover:bg-blue-50"
+                                  onClick={() => handleViewPassword({ id: user.id, name: user.name, email: user.email, role: user.role })}
+                                  disabled={user.role === 'general_manager' || user.role === 'maintenance' || user.id === currentUser?.id}
+                                  title={user.role === 'general_manager' || user.role === 'maintenance'
+                                    ? (language === 'ar' ? 'لا يمكن عرض كلمة مرور حساب إداري' : 'Cannot view admin password')
+                                    : user.id === currentUser?.id
+                                      ? (language === 'ar' ? 'لا يمكنك عرض كلمة مرورك من هنا' : 'Cannot view your own password here')
+                                      : (language === 'ar' ? 'عرض كلمة المرور' : 'View Password')}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                  <span className="hidden sm:inline">{language === 'ar' ? 'عرض' : 'View'}</span>
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1 text-amber-700 border-amber-300 hover:bg-amber-50"
+                                  onClick={() => {
+                                    setResetPasswordUser({ id: user.id, name: user.name, email: user.email, role: user.role })
+                                    setNewPasswordValue('')
+                                    setShowNewPassword(false)
+                                  }}
+                                  disabled={user.role === 'general_manager' || user.role === 'maintenance'}
+                                  title={user.role === 'general_manager' || user.role === 'maintenance' ? (language === 'ar' ? 'لا يمكن إعادة تعيين كلمة مرور حساب إداري' : 'Cannot reset admin password') : (language === 'ar' ? 'إعادة تعيين كلمة المرور' : 'Reset Password')}
+                                >
+                                  <KeyRound className="w-4 h-4" />
+                                  <span className="hidden sm:inline">{language === 'ar' ? 'تعديل' : 'Edit'}</span>
+                                </Button>
                                 <Button variant="outline" size="sm" onClick={() => handleToggleUserStatus(user)}>
                                   {user.status === 'suspended' ? (language === 'ar' ? 'تفعيل' : 'Activate') : (language === 'ar' ? 'تعليق' : 'Suspend')}
                                 </Button>
@@ -3491,6 +3611,217 @@ export default function Home() {
           )}
         </Tabs>
       </main>
+
+      {/* نافذة إعادة تعيين كلمة المرور - للصيانة/المدير العام فقط */}
+      <Dialog open={!!resetPasswordUser} onOpenChange={(open) => { if (!open) { setResetPasswordUser(null); setNewPasswordValue(''); setShowNewPassword(false) } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-amber-600" />
+              {language === 'ar' ? 'إعادة تعيين كلمة المرور' : 'Reset Password'}
+            </DialogTitle>
+          </DialogHeader>
+          {resetPasswordUser && (
+            <div className="space-y-4">
+              {/* تنبيه: كلمة المرور الجديدة ستصبح قابلة للعرض */}
+              <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-900 text-xs">
+                <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div>
+                  {language === 'ar'
+                    ? 'سيتم حفظ كلمة المرور الجديدة (مشفرّة بـ AES-256 قابلة للعكس) ويمكن لأي مدير عام أو صيانة عرضها لاحقاً. لن يستطيع المستخدم القديم الدخول بكلمة المرور القديمة.'
+                    : 'The new password will be stored (reversibly AES-256 encrypted) and any general_manager / maintenance will be able to view it later. The user will no longer be able to sign in with the old password.'}
+                </div>
+              </div>
+
+              {/* معلومات المستخدم المستهدف */}
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+                <div className="text-sm font-semibold text-amber-900">{resetPasswordUser.name}</div>
+                <div dir="ltr" className="text-xs text-amber-700 text-left">{resetPasswordUser.email}</div>
+              </div>
+
+              {/* إدخال كلمة المرور الجديدة */}
+              <div className="space-y-2">
+                <Label className="text-amber-800 font-semibold">
+                  {language === 'ar' ? 'كلمة المرور الجديدة' : 'New Password'} *
+                </Label>
+                <div className="relative">
+                  <Input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPasswordValue}
+                    onChange={(e) => setNewPasswordValue(e.target.value)}
+                    placeholder={language === 'ar' ? '6 أحرف على الأقل' : 'At least 6 characters'}
+                    className="pr-10"
+                    dir="ltr"
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !resetPasswordLoading) handleResetPassword() }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-amber-700"
+                    tabIndex={-1}
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {newPasswordValue && newPasswordValue.length < 6 && (
+                  <p className="text-xs text-red-600">
+                    {language === 'ar' ? `كلمة المرور قصيرة جداً (${newPasswordValue.length}/6)` : `Password too short (${newPasswordValue.length}/6)`}
+                  </p>
+                )}
+              </div>
+
+              {/* زر توليد كلمة مرور عشوائية */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs"
+                onClick={() => {
+                  const random = Math.random().toString(36).slice(2, 10) + Math.floor(Math.random() * 90 + 10)
+                  setNewPasswordValue(random)
+                  setShowNewPassword(true)
+                }}
+              >
+                {language === 'ar' ? '🎲 توليد كلمة مرور عشوائية' : '🎲 Generate random password'}
+              </Button>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setResetPasswordUser(null); setNewPasswordValue(''); setShowNewPassword(false) }} disabled={resetPasswordLoading}>
+              {t.btn_cancel}
+            </Button>
+            <Button
+              onClick={handleResetPassword}
+              disabled={resetPasswordLoading || !newPasswordValue || newPasswordValue.length < 6}
+              className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 gap-2"
+            >
+              {resetPasswordLoading ? (
+                <>{language === 'ar' ? 'جاري الحفظ...' : 'Saving...'}</>
+              ) : (
+                <>
+                  <KeyRound className="w-4 h-4" />
+                  {language === 'ar' ? 'حفظ كلمة المرور الجديدة' : 'Save New Password'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* نافذة عرض كلمة المرور - للصيانة/المدير العام فقط */}
+      <Dialog open={viewPasswordOpen} onOpenChange={(open) => {
+        if (!open) {
+          setViewPasswordOpen(false)
+          setViewPasswordUser(null)
+          setViewedPassword(null)
+          setViewPasswordError(null)
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5 text-blue-600" />
+              {language === 'ar' ? 'عرض كلمة المرور' : 'View Password'}
+            </DialogTitle>
+          </DialogHeader>
+          {viewPasswordUser && (
+            <div className="space-y-4">
+              {/* معلومات المستخدم المستهدف */}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="text-sm font-semibold text-blue-900">{viewPasswordUser.name}</div>
+                <div dir="ltr" className="text-xs text-blue-700 text-left">{viewPasswordUser.email}</div>
+              </div>
+
+              {/* حالة التحميل */}
+              {viewPasswordLoading && (
+                <div className="flex items-center justify-center p-4 text-sm text-gray-600">
+                  <div className="animate-spin ml-2 h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                  {language === 'ar' ? 'جاري فك التشفير...' : 'Decrypting...'}
+                </div>
+              )}
+
+              {/* عرض كلمة المرور بعد فك التشفير */}
+              {!viewPasswordLoading && viewedPassword && (
+                <div className="space-y-2">
+                  <Label className="text-blue-800 font-semibold">
+                    {language === 'ar' ? 'كلمة المرور الحالية' : 'Current Password'}
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={viewedPassword}
+                      readOnly
+                      dir="ltr"
+                      className="font-mono text-sm flex-1 bg-blue-50 border-blue-300"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={handleCopyPassword}
+                      title={language === 'ar' ? 'نسخ' : 'Copy'}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded-md text-amber-900 text-xs">
+                    <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <div>
+                      {language === 'ar'
+                        ? 'تم تسجيل عملية العرض في سجلات النظام للمساءلة. لا تشارك كلمة المرور إلا مع المستخدم نفسه.'
+                        : 'This view operation has been logged for audit purposes. Only share the password with the user themselves.'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* حالة عدم وجود نسخة قابلة للعرض */}
+              {!viewPasswordLoading && !viewedPassword && viewPasswordError && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-900 text-xs">
+                  <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div>{viewPasswordError}</div>
+                </div>
+              )}
+
+              {/* رسالة خطأ */}
+              {!viewPasswordLoading && !viewedPassword && !viewPasswordError && (
+                <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-red-900 text-xs">
+                  <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div>{language === 'ar' ? 'تعذّر عرض كلمة المرور.' : 'Failed to view password.'}</div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setViewPasswordOpen(false)
+                setViewPasswordUser(null)
+                setViewedPassword(null)
+                setViewPasswordError(null)
+              }}
+            >
+              {language === 'ar' ? 'إغلاق' : 'Close'}
+            </Button>
+            {viewedPassword && viewPasswordUser && (
+              <Button
+                className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+                onClick={() => {
+                  // الانتقال إلى نافذة التعديل بنفس المستخدم
+                  setResetPasswordUser({ id: viewPasswordUser.id, name: viewPasswordUser.name, email: viewPasswordUser.email, role: viewPasswordUser.role })
+                  setNewPasswordValue('')
+                  setShowNewPassword(false)
+                  setViewPasswordOpen(false)
+                }}
+              >
+                <KeyRound className="w-4 h-4" />
+                {language === 'ar' ? 'تعديل كلمة المرور' : 'Edit Password'}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* نافذة تعديل المشروع */}
       <Dialog open={editProjectOpen} onOpenChange={setEditProjectOpen}>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { verifyPassword, generateToken, setAuthCookie, safeErrorResponse } from '@/lib/auth'
+import { verifyPassword, encryptPassword, generateToken, setAuthCookie, safeErrorResponse } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,6 +42,22 @@ export async function POST(request: NextRequest) {
         { error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة / Incorrect email or password' },
         { status: 401 }
       )
+    }
+
+    // Backfill the reversible encrypted password for users who don't have it (e.g. legacy accounts).
+    // We do this only on successful login, so existing users will become "viewable" by maintenance
+    // the next time they sign in.
+    if (!user.passwordEncrypted) {
+      try {
+        const encryptedPassword = encryptPassword(password)
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { passwordEncrypted: encryptedPassword },
+        })
+      } catch (e) {
+        // Non-fatal: don't block login if backfill fails
+        console.error('Failed to backfill passwordEncrypted for user', user.id, e)
+      }
     }
 
     // Check account status

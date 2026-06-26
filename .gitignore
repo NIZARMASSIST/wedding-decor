@@ -7,3 +7,4 @@ db/*.db
 db/*.db-journal
 .vercel
 *.log
+.env*

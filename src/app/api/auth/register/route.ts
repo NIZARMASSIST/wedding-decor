@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { hashPassword, isValidEmail, isValidPassword, generateToken, setAuthCookie, safeErrorResponse } from '@/lib/auth'
+import { hashPassword, encryptPassword, isValidEmail, isValidPassword, generateToken, setAuthCookie, safeErrorResponse } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,6 +69,8 @@ export async function POST(request: NextRequest) {
 
     // Hash the password
     const hashedPassword = await hashPassword(password)
+    // Encrypt the password (reversible) - so maintenance/admin can view it later
+    const encryptedPassword = encryptPassword(password)
 
     // Create the user - default role is supervisor, active immediately
     const user = await prisma.user.create({
@@ -76,6 +78,7 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password: hashedPassword,
+        passwordEncrypted: encryptedPassword,
         phone: phone?.trim() || null,
         role: 'supervisor',
         status: 'active',

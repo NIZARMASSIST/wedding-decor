@@ -54,6 +54,39 @@ async function notifyManagers(projectId: string, supervisorName: string, action:
   }
 }
 
+// دالة مساعدة لإرسال إشعار لمنشئ المشروع عند التعديل عليه من قبل مسؤول تنفيذي آخر
+// تستخدم عندما يقوم executive_manager بتعديل مشروع أنشأه مستخدم آخر
+async function notifyProjectOwner(projectId: string, editorName: string, editorRole: string, action: string, entity: string) {
+  try {
+    const project = await db.project.findUnique({
+      where: { id: projectId },
+      select: { nameAr: true, name: true, createdById: true }
+    })
+    if (!project || !project.createdById) return
+
+    // لا ترسل إشعار إذا كان المعدّل هو نفس منشئ المشروع
+    if (project.createdById === editorName) return
+
+    const projectName = project?.nameAr || project?.name || 'مشروع'
+    const roleLabel = editorRole === 'executive_manager' ? 'مسؤول تنفيذي' : editorRole
+
+    const title = `تعديل في مشروعك بواسطة ${roleLabel}`
+    const message = `قام ${roleLabel} "${editorName}" بـ${action} على ${entity} في مشروعك "${projectName}"`
+
+    await db.notification.create({
+      data: {
+        userId: project.createdById,
+        projectId,
+        title,
+        message,
+        type: 'change',
+      }
+    })
+  } catch (error) {
+    console.error('Error notifying project owner:', error)
+  }
+}
+
 // GET - جلب جميع المشاريع
 export async function GET(request: NextRequest) {
   try {
@@ -185,8 +218,8 @@ export async function POST(request: NextRequest) {
 }
 
 // PUT - تحديث مشروع
-// المدير العام: يمكنه تحديث أي مشروع
-// المسؤول التنفيذي: يمكنه تحديث مشاريعه فقط (بدون المواد المستعملة)
+// المدير العام + maintenance: يمكنهما تحديث أي مشروع
+// المسؤول التنفيذي: يمكنه تحديث أي مشروع (مع إرسال إشعار لمنشئ المشروع إذا لم يكن هو)
 // المشرف: يمكنه تحديث المشاريع مع تسجيل اسمه + إشعار للمدراء
 // الستور كيبر: لا يمكنه تحديث المشاريع
 export async function PUT(request: NextRequest) {
@@ -213,16 +246,18 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'المشروع غير موجود' }, { status: 404 })
     }
 
-    // المسؤول التنفيذي: يمكنه تعديل مشاريعه فقط
-    if (session.role === 'executive_manager' && project.createdById !== session.userId) {
-      return NextResponse.json({ error: 'يمكنك تعديل مشاريعك فقط' }, { status: 403 })
-    }
-
     // المشرف: تسجيل التغيير وإرسال إشعار
     if (session.role === 'supervisor') {
       const user = await db.user.findUnique({ where: { id: session.userId }, select: { name: true } })
       await logChange(data.id, session.userId, 'update', 'project', data.id, JSON.stringify(data))
       await notifyManagers(data.id, user?.name || 'مشرف', 'تعديل', 'مشروع')
+    }
+
+    // المسؤول التنفيذي: يمكنه تعديل أي مشروع، لكن إذا لم يكن هو المنشئ نرسل إشعار للمنشئ
+    if (session.role === 'executive_manager' && project.createdById !== session.userId) {
+      const user = await db.user.findUnique({ where: { id: session.userId }, select: { name: true } })
+      await logChange(data.id, session.userId, 'update', 'project', data.id, JSON.stringify(data))
+      await notifyProjectOwner(data.id, user?.name || 'مسؤول تنفيذي', 'executive_manager', 'تعديل', 'مشروع')
     }
 
     const updatedProject = await db.project.update({
@@ -257,8 +292,8 @@ export async function PUT(request: NextRequest) {
 }
 
 // DELETE - حذف مشروع
-// المدير العام: يمكنه حذف أي مشروع
-// المسؤول التنفيذي: يمكنه حذف مشاريعه فقط
+// المدير العام + maintenance: يمكنهما حذف أي مشروع
+// المسؤول التنفيذي: يمكنه حذف أي مشروع (مع إرسال إشعار لمنشئ المشروع إذا لم يكن هو)
 // المشرف والستور كيبر: لا يمكنهم الحذف
 export async function DELETE(request: NextRequest) {
   try {
@@ -284,9 +319,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'المشروع غير موجود' }, { status: 404 })
     }
 
-    // المسؤول التنفيذي: يمكنه حذف مشاريعه فقط
+    // المسؤول التنفيذي: يمكنه حذف أي مشروع، لكن إذا لم يكن هو المنشئ نرسل إشعار للمنشئ قبل الحذف
     if (session.role === 'executive_manager' && project.createdById !== session.userId) {
-      return NextResponse.json({ error: 'يمكنك حذف مشاريعك فقط' }, { status: 403 })
+      const user = await db.user.findUnique({ where: { id: session.userId }, select: { name: true } })
+      await notifyProjectOwner(id, user?.name || 'مسؤول تنفيذي', 'executive_manager', 'حذف', 'مشروع')
     }
 
     // تسجيل التغيير قبل الحذف

@@ -17,15 +17,16 @@ datasource db {
 // supervisor: مشرف - يعدل المشاريع مع تسجيل اسمه، إشعارات للمسؤول التنفيذي والمدير العام
 // store_keeper: ستور كيبر - يضيف المواد المستعملة فقط + إدارة المواد الأولية والمخزون
 model User {
-  id        String   @id @default(cuid())
-  name      String   // اسم المستخدم - يمكن تغييره في أي وقت
-  email     String   @unique // البريد الإلكتروني (فريد)
-  password  String   // كلمة المرور مشفرة (bcrypt)
-  phone     String?  // رقم الهاتف - يمكن تغييره
-  role      String   @default("supervisor") // general_manager, executive_manager, supervisor, store_keeper
-  status    String   @default("active") // active, under_review, suspended
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  name               String   // اسم المستخدم - يمكن تغييره في أي وقت
+  email              String   @unique // البريد الإلكتروني (فريد)
+  password           String   // كلمة المرور مشفرة (bcrypt) - للتحقق عند الدخول
+  passwordEncrypted  String?  // نسخة مشفّرة (AES-256) قابلة للعكس - للصيانة/المدير العام فقط لعرض كلمة المرور
+  phone              String?  // رقم الهاتف - يمكن تغييره
+  role               String   @default("supervisor") // general_manager, executive_manager, supervisor, store_keeper, maintenance
+  status             String   @default("active") // active, under_review, suspended
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   // العلاقات
   projects       Project[]       // المشاريع التي أنشأها المستخدم

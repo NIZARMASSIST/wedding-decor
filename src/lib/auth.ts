@@ -1,11 +1,17 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 import { cookies } from 'next/headers'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-production'
 const SALT_ROUNDS = 12
 const TOKEN_NAME = 'auth_token'
 const TOKEN_EXPIRY = 7 * 24 * 60 * 60 * 1000 // 7 days in ms
+
+// مفتاح تشفير AES-256 لكلمات المرور القابلة للعكس (للصيانة فقط)
+// 32 بايت = 256 بت. إذا لم يُضبط في البيئة، نُولّد مفتاحاً ثابتاً من JWT_SECRET.
+const PASSWORD_AES_KEY = process.env.PASSWORD_AES_KEY
+  || crypto.createHash('sha256').update('aes-key:' + JWT_SECRET).digest('base64').slice(0, 32).padEnd(32, '0')
 
 // Hash a password using bcrypt
 export async function hashPassword(password: string): Promise<string> {
@@ -15,6 +21,36 @@ export async function hashPassword(password: string): Promise<string> {
 // Verify a password against a hash
 export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
   return bcrypt.compare(password, hashedPassword)
+}
+
+/**
+ * تشفير كلمة المرور بـ AES-256-CTR قابل للعكس.
+ * يستعمل فقط لتخزين نسخة يقدر الصيانة/المدير العام على فك تشفيرها وعرضها.
+ * الصيغة: base64(iv || ciphertext)
+ */
+export function encryptPassword(password: string): string {
+  const iv = crypto.randomBytes(16)
+  const cipher = crypto.createCipheriv('aes-256-ctr', Buffer.from(PASSWORD_AES_KEY, 'utf8'), iv)
+  const encrypted = Buffer.concat([cipher.update(password, 'utf8'), cipher.final()])
+  return Buffer.concat([iv, encrypted]).toString('base64')
+}
+
+/**
+ * فك تشفير كلمة المرور المخزّنة بصيغة AES-256-CTR.
+ * يرجع null إذا لم يكن هناك نسخة مخزّنة (مثلاً للمستخدمين القدامى قبل تفعيل الميزة).
+ */
+export function decryptPassword(encrypted: string | null | undefined): string | null {
+  if (!encrypted) return null
+  try {
+    const buf = Buffer.from(encrypted, 'base64')
+    const iv = buf.subarray(0, 16)
+    const data = buf.subarray(16)
+    const decipher = crypto.createDecipheriv('aes-256-ctr', Buffer.from(PASSWORD_AES_KEY, 'utf8'), iv)
+    const decrypted = Buffer.concat([decipher.update(data), decipher.final()])
+    return decrypted.toString('utf8')
+  } catch {
+    return null
+  }
 }
 
 // Generate a JWT token
