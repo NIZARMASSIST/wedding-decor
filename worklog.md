@@ -308,3 +308,38 @@ Stage Summary:
   * src/app/page.tsx (تبويب الوحدات الكامل)
 - ملاحظة للنشر على Vercel: تم تنفيذ الهجرة يدوياً على قاعدة البيانات الإنتاجية، لذا لن يحتاج المستخدم لتشغيل /api/db-migrate-units. لكن إذا أُنشئت بيئة جديدة، يجب تشغيل POST /api/db-migrate-units مع الـ Authorization: Bearer migrate-2024.
 
+
+---
+Task ID: 10
+Agent: Main Agent
+Task: تشخيص عدم ظهور صفحة الوحدات للمستخدم
+
+Work Log:
+- فحص حالة git: الـ local متقدم بـ 16 commits عن origin/main (GitHub)
+- التحقق من وجود ميزة الوحدات في الكود المحلي: ✓ موجودة بالكامل
+  * src/app/api/units/route.ts (جديد - 7.7KB)
+  * src/app/api/db-migrate-units/route.ts (جديد - 5.2KB)
+  * src/app/page.tsx: تبويب "الوحدات" في السطر 1731 + محتوى 550 سطر في السطر 2644
+  * prisma/schema.prisma: نموذج Unit + حقل unitId
+  * src/app/api/items/route.ts و projects/route.ts: محدثان لدعم unitId
+- محاولة git push: فشل - الـ GitHub token "OLD" منتهي الصلاحية
+- محاولة vercel deploy: فشل - لا يوجد VERCEL_TOKEN صالح
+- تشغيل production build: ✓ نجح، جميع المسارات ظهرت في الـ build output
+- اختبار API على قاعدة البيانات الإنتاجية (Neon):
+  * POST /api/auth/login: ✓ نجح (yahya@gmail.com / 2125)
+  * GET /api/units: ✓ يرجع [] (لا توجد وحدات بعد)
+  * POST /api/db-migrate-units: ✓ "Table Unit already exists" - الجدول موجود مسبقاً
+- تشخيص مشكلة تسجيل الدخول محلياً:
+  * في الإنتاج NODE_ENV=production، الـ auth cookie يكون Secure=true
+  * هذا يمنع حفظ الـ cookie على http://localhost
+  * الحل: تشغيل بـ NODE_ENV=development
+- إنشاء ملف /home/z/my-project/download/units-feature.zip يحتوي على ملفات ميزة الوحدات
+
+Stage Summary:
+- الكود صحيح ومكتمل وموجود محلياً
+- قاعدة البيانات الإنتاجية تحتوي على جدول Unit (الهجرة تمت في Task 9)
+- API الوحدات يعمل بشكل صحيح على الإنتاج
+- المشكلة الوحيدة: التعديلات (16 commits) لم تُنشر على GitHub/Vercel
+- السبب: توكين GitHub منتهي الصلاحية + لا يوجد VERCEL_TOKEN
+- المطلوب من المستخدم لتسليم الميزة: تزويد VERCEL_TOKEN أو GitHub PAT جديد (github_pat_...)
+- الملفات المساعدة: /home/z/my-project/download/units-feature.zip
