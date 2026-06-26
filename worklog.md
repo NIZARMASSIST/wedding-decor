@@ -224,3 +224,87 @@ Stage Summary:
   * src/app/forgot-password/page.tsx (موجود مسبقاً)
   * src/app/(auth)/login/page.tsx (موجود مسبقاً - الرابط موجود)
 - متغيرات البيئة على Vercel: GMAIL_USER, GMAIL_APP_PASSWORD, NEXT_PUBLIC_APP_URL
+
+---
+Task ID: 9
+Agent: Main Agent
+Task: إضافة ميزة الوحدات لكل مشروع (Units) - كل وحدة تضم عناصرها (ProductionItem) + تبويب مستقل للوحدات يعرضها مجمّعة حسب المشروع. بدون المساس بأي بيانات أو مشاريع مسجّلة.
+
+Work Log:
+- تحديث prisma/schema.prisma:
+  * إضافة نموذج Unit جديد (id, projectId, name, nameAr, description, order, status, createdAt, updatedAt)
+  * ربط Unit مع Project (onDelete: Cascade)
+  * ربط Unit مع ProductionItem (onDelete: SetNull)
+  * إضافة حقل unitId اختياري (String?) إلى ProductionItem
+  * إضافة indexes: Unit(projectId), ProductionItem(unitId)
+- إنشاء API endpoint هجرة: /api/db-migrate-units/route.ts
+  * POST مع MIGRATION_SECRET
+  * ينشئ جدول Unit + فهرس + FK إلى Project
+  * يضيف حقل unitId + فهرس + FK إلى ProductionItem
+  * آمن تماماً: idempotent، لا يمس أي بيانات
+- إنشاء API endpoint /api/units/route.ts:
+  * GET: يدعم ?projectId=X و ?id=X مع تضمين العناصر والمراحل
+  * POST: إنشاء وحدة (executive_manager + supervisor + admin فقط)
+  * PUT: تعديل وحدة (executive_manager + supervisor + admin فقط)
+  * DELETE: حذف وحدة (admin + executive_manager فقط) - يفك ارتباط العناصر بدون حذفها
+- تحديث /api/items/route.ts:
+  * GET: يدعم فلترة unitId ويرجع unit object مع كل عنصر
+  * POST: يقبل unitId اختياري
+  * PUT: يقبل unitId (للربط أو فك الارتباط)
+- تحديث /api/projects/route.ts:
+  * GET و GET?id: يضمّن units لكل مشروع (مع items للوحدة الواحدة في GET?id)
+- تحديث src/app/page.tsx (الواجهة):
+  * إضافة interface Unit + تحديث interface Project و ProductionItem
+  * إضافة state: units, unitsProjectFilter, expandedUnits, addUnitOpen, newUnit, editUnitOpen, editingUnit, linkItemToUnitOpen, linkTargetUnit, linkItemId, unitItemSearchQuery
+  * إضافة fetchUnits وتضمينها في fetchData
+  * إضافة handleAddUnit, handleEditUnit, handleDeleteUnit, handleLinkItemToUnit, handleUnlinkItemFromUnit
+  * إضافة دوال مساعدة: getUnitDisplayName, getUnitProjectName
+  * تحديث handleAddItem و handleEditItem لدعم unitId
+  * إضافة تبويب جديد "الوحدات" (Units) في TabsList بأيقونة Boxes
+  * إضافة TabsContent للوحدات:
+    - فلتر حسب المشروع (Select)
+    - زر "إضافة وحدة" (لغير store_keeper)
+    - تجميع الوحدات حسب المشروع في بطاقات منفصلة
+    - كل وحدة قابلة للطي لعرض عناصرها
+    - لكل وحدة: شريط تقدم، عدد العناصر، حالة، زر "ربط عنصر"، زر تعديل، زر حذف
+    - العناصر بدون وحدة تُعرض في شارات أسفل كل مشروع
+  * نافذة "إضافة وحدة" كاملة (مشروع، اسم EN, اسم AR, وصف)
+  * نافذة "تعديل الوحدة" مع حالة الوحدة
+  * نافذة "ربط عنصر بالوحدة" مع بحث واختيار من قائمة العناصر المتاحة في المشروع
+  * تحديث نافذتي "إضافة عنصر" و "تعديل عنصر" لتشمل اختيار الوحدة (يظهر فقط إذا اختير مشروع)
+
+اختبار فعلي (E2E على قاعدة بيانات الإنتاج Neon):
+- ✓ تشغيل الهجرة على قاعدة البيانات الإنتاجية: جدول Unit أُنشئ، حقل unitId أُضيف، FK + indexes أُنشئت
+- ✓ جميع المشاريع الـ3 الموجودة محفوظة (لم تُمَس)
+- ✓ Login بنجاح
+- ✓ GET /api/units يرجع []
+- ✓ POST /api/units ينشئ "Entrance Unit" و "Stage Unit" مع order تلقائي
+- ✓ GET /api/units?projectId=X يفلتر بشكل صحيح
+- ✓ PUT /api/units يحدّث الاسم والحالة
+- ✓ POST /api/items مع unitId يربط العنصر بالوحدة
+- ✓ GET /api/units يرجع unit.items مضمّنة مع كل وحدة
+- ✓ GET /api/units?id=X يرجع وحدة واحدة بعناصرها
+- ✓ PUT /api/items مع unitId=null يفك ارتباط العنصر
+- ✓ DELETE /api/units يفك ارتباط العناصر ويحذف الوحدة
+- ✓ البناء: next build نجح بدون أخطاء، ظهرت المسارات الجديدة /api/units و /api/db-migrate-units
+
+Stage Summary:
+- تبويب "الوحدات" الجديد يعرض الوحدات مجمّعة حسب المشروع (مع فرز متعدد المشاريع)
+- كل وحدة تضم عناصرها (ProductionItem) مع شريط تقدم وعدد وحالة
+- يمكن إنشاء وحدة جديدة، تعديلها، حذفها، وربط/فك ارتباط العناصر بها
+- العناصر الموجودة سابقاً تبقى كما هي (unitId=NULL افتراضياً) - تظهر في قسم "عناصر بدون وحدة"
+- يمكن أيضاً اختيار الوحدة عند إنشاء/تعديل عنصر جديد
+- الصلاحيات:
+  * إنشاء/تعديل الوحدة: general_manager + maintenance + executive_manager + supervisor
+  * حذف الوحدة: general_manager + maintenance + executive_manager فقط
+  * store_keeper: يرى الوحدات فقط دون تعديل
+- لا توجد أي تغييرات على البيانات الموجودة أو المشاريع المسجّلة - كل التعديلات إضافية فقط (additive)
+- الملفات المعدلة:
+  * prisma/schema.prisma (نموذج Unit + حقل unitId)
+  * src/app/api/db-migrate-units/route.ts (جديد)
+  * src/app/api/units/route.ts (جديد)
+  * src/app/api/items/route.ts (دعم unitId)
+  * src/app/api/projects/route.ts (تضمين units)
+  * src/app/page.tsx (تبويب الوحدات الكامل)
+- ملاحظة للنشر على Vercel: تم تنفيذ الهجرة يدوياً على قاعدة البيانات الإنتاجية، لذا لن يحتاج المستخدم لتشغيل /api/db-migrate-units. لكن إذا أُنشئت بيئة جديدة، يجب تشغيل POST /api/db-migrate-units مع الـ Authorization: Bearer migrate-2024.
+

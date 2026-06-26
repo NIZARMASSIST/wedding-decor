@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status')
     const projectId = searchParams.get('projectId')
+    const unitId = searchParams.get('unitId')
     
     const where: any = {}
     if (status) {
@@ -17,11 +18,21 @@ export async function GET(request: NextRequest) {
     if (projectId) {
       where.projectId = projectId
     }
+    if (unitId) {
+      where.unitId = unitId
+    }
     
     const items = await db.productionItem.findMany({
       where,
       include: {
         project: {
+          select: {
+            id: true,
+            name: true,
+            nameAr: true
+          }
+        },
+        unit: {
           select: {
             id: true,
             name: true,
@@ -62,7 +73,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Item data:', body)
     
-    const { name, image, priority, notes, totalQuantity, deadline, stages, projectId } = body
+    const { name, image, priority, notes, totalQuantity, deadline, stages, projectId, unitId } = body
     
     // التحقق من الحقول المطلوبة
     if (!name || !name.trim()) {
@@ -109,6 +120,7 @@ export async function POST(request: NextRequest) {
         totalQuantity: parseInt(totalQuantity) || 1,
         deadline: deadline ? new Date(deadline) : null,
         projectId: projectId || null,
+        unitId: unitId || null,
         stages: stagesData.length > 0 ? {
           create: stagesData
         } : undefined
@@ -137,7 +149,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, name, image, priority, notes, totalQuantity, deadline, status, projectId } = body
+    const { id, name, image, priority, notes, totalQuantity, deadline, status, projectId, unitId } = body
     
     if (!id) {
       return NextResponse.json({ error: 'Item ID is required' }, { status: 400 })
@@ -153,6 +165,7 @@ export async function PUT(request: NextRequest) {
     if (deadline !== undefined) updateData.deadline = deadline ? new Date(deadline) : null
     if (status !== undefined) updateData.status = status
     if (projectId !== undefined) updateData.projectId = projectId || null
+    if (unitId !== undefined) updateData.unitId = unitId || null
     
     const item = await db.productionItem.update({
       where: { id },

@@ -62,11 +62,32 @@ model Project {
 
   // العلاقات
   createdBy         User             @relation(fields: [createdById], references: [id])
+  units             Unit[]           // الوحدات التابعة للمشروع (كل وحدة تضم عناصرها)
   items             ProductionItem[]
   projectMaterials  ProjectMaterial[] // المواد المطلوبة للمشروع (يضيفها منشئ المشروع فقط)
   usedMaterials     UsedMaterial[]   // المواد المستعملة في المشروع (يضيفها الستور كيبر فقط)
   changeLogs        ChangeLog[]
   notifications     Notification[]
+}
+
+// الوحدات التابعة لكل مشروع - كل وحدة تضم مجموعة عناصر (ProductionItem)
+// الوحدة قسم منطقي داخل المشروع: مثلاً "وحدة المدخل"، "وحدة المنصة"، "وحدة الإضاءة"
+model Unit {
+  id          String   @id @default(cuid())
+  projectId   String   // المشروع الذي تنتمي إليه الوحدة
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String   // اسم الوحدة
+  nameAr      String?  // اسم الوحدة بالعربية (اختياري)
+  description String?  // وصف مختصر للوحدة
+  order       Int      @default(0) // ترتيب الوحدة داخل المشروع
+  status      String   @default("active") // active, completed, cancelled
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // العناصر المرتبطة بالوحدة
+  items       ProductionItem[]
+
+  @@index([projectId])
 }
 
 // الأقسام المتاحة في التصنيع
@@ -86,6 +107,8 @@ model ProductionItem {
   id              String   @id @default(cuid())
   projectId       String?  // ربط العنصر بمشروع
   project         Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  unitId          String?  // ربط العنصر بوحدة داخل المشروع (اختياري)
+  unit            Unit?    @relation(fields: [unitId], references: [id], onDelete: SetNull)
   name            String   // اسم العنصر
   image           String?  // صورة العنصر (base64 أو رابط)
   priority        Int      @default(1) // الأولوية (1 = أعلى أولوية)
@@ -98,6 +121,7 @@ model ProductionItem {
   updatedAt       DateTime @updatedAt
   
   @@index([projectId])
+  @@index([unitId])
 }
 
 // المراحل لكل عنصر

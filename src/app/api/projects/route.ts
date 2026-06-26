@@ -103,6 +103,22 @@ export async function GET(request: NextRequest) {
         where: { id },
         include: {
           createdBy: { select: { id: true, name: true, role: true } },
+          units: {
+            include: {
+              items: {
+                include: {
+                  stages: {
+                    include: {
+                      department: true,
+                      checklist: true
+                    }
+                  }
+                },
+                orderBy: { priority: 'asc' }
+              }
+            },
+            orderBy: [{ order: 'asc' }, { createdAt: 'asc' }]
+          },
           items: {
             include: {
               stages: {
@@ -123,6 +139,10 @@ export async function GET(request: NextRequest) {
     const projects = await db.project.findMany({
       include: {
         createdBy: { select: { id: true, name: true, role: true } },
+        units: {
+          orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+          select: { id: true, name: true, nameAr: true, order: true, status: true }
+        },
         items: {
           include: {
             stages: {

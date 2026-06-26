@@ -21,7 +21,7 @@ import {
   FolderOpen, BarChart3, PieChart, LogOut, User, Upload,
   Search, Filter, Box, X, LayoutGrid, List, ImageIcon,
   MapPin, UserCheck, ClipboardList, MessageCircle, HelpCircle, Calculator,
-  KeyRound, EyeOff, ShieldAlert, Copy
+  KeyRound, EyeOff, ShieldAlert, Copy, Boxes, Layers, FolderTree
 
 } from 'lucide-react'
 import MaterialsTab from '@/components/MaterialsTab'
@@ -94,6 +94,12 @@ interface ProductionItem {
     name: string
     nameAr?: string
   }
+  unitId?: string
+  unit?: {
+    id: string
+    name: string
+    nameAr?: string
+  }
   name: string
   image?: string
   priority: number
@@ -102,6 +108,22 @@ interface ProductionItem {
   totalQuantity: number
   deadline?: string
   stages: Stage[]
+  createdAt: string
+  updatedAt: string
+}
+
+// واجهة الوحدة
+type UnitStatus = 'active' | 'completed' | 'cancelled'
+interface Unit {
+  id: string
+  projectId: string
+  project?: { id: string; name: string; nameAr?: string }
+  name: string
+  nameAr?: string
+  description?: string
+  order: number
+  status: UnitStatus | string
+  items?: ProductionItem[]
   createdAt: string
   updatedAt: string
 }
@@ -126,6 +148,7 @@ interface Project {
   notesAuthor?: string
   createdById?: string
   createdBy?: { id: string; name: string; role: string }
+  units?: Unit[]
   usedMaterials?: any[]
   createdAt: string
   updatedAt: string
@@ -330,6 +353,27 @@ export default function Home() {
   const [viewPasswordError, setViewPasswordError] = useState<string | null>(null)
   const [chatOpen, setChatOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+
+  // ============= حالات الوحدات =============
+  const [units, setUnits] = useState<Unit[]>([])
+  // فلتر الوحدات حسب المشروع: 'all' أو معرّف مشروع
+  const [unitsProjectFilter, setUnitsProjectFilter] = useState<string>('all')
+  // الوحدات المفتوحة (لإظهار عناصرها)
+  const [expandedUnits, setExpandedUnits] = useState<Record<string, boolean>>({})
+  // نافذة إضافة وحدة
+  const [addUnitOpen, setAddUnitOpen] = useState(false)
+  const [newUnit, setNewUnit] = useState<{ projectId: string; name: string; nameAr: string; description: string }>({
+    projectId: '', name: '', nameAr: '', description: ''
+  })
+  // نافذة تعديل وحدة
+  const [editUnitOpen, setEditUnitOpen] = useState(false)
+  const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
+  // نافذة ربط عنصر بالوحدة
+  const [linkItemToUnitOpen, setLinkItemToUnitOpen] = useState(false)
+  const [linkTargetUnit, setLinkTargetUnit] = useState<Unit | null>(null)
+  const [linkItemId, setLinkItemId] = useState<string>('')
+  // فلاتر العناصر داخل الوحدة
+  const [unitItemSearchQuery, setUnitItemSearchQuery] = useState('')
 
   // جلب المواد
   const fetchMaterials = useCallback(async () => {
@@ -627,6 +671,9 @@ export default function Home() {
       // جلب الإشعارات
       fetchNotifications()
 
+      // جلب الوحدات
+      fetchUnits()
+
       // جلب المواد المستعملة لكل مشروع
       if (projectIds.length > 0) {
         const usedResults = await Promise.allSettled(
@@ -881,7 +928,169 @@ export default function Home() {
     }
   }
 
-  // إضافة عنصر
+  // ============= دوال الوحدات =============
+  const fetchUnits = useCallback(async () => {
+    try {
+      const res = await fetch('/api/units')
+      if (res.ok) {
+        const data = await res.json()
+        setUnits(Array.isArray(data) ? data : [])
+      } else {
+        // إذا فشل الجلب (مثلاً الجدول لم يُهاجر بعد) نضع قائمة فارغة بدون خطأ
+        setUnits([])
+      }
+    } catch (error) {
+      console.error('Error fetching units:', error)
+      setUnits([])
+    }
+  }, [])
+
+  // إنشاء وحدة جديدة
+  const handleAddUnit = async () => {
+    if (!newUnit.projectId) {
+      toast.error(language === 'ar' ? 'الرجاء اختيار المشروع' : 'Please select a project')
+      return
+    }
+    if (!newUnit.name.trim()) {
+      toast.error(language === 'ar' ? 'الرجاء إدخال اسم الوحدة' : 'Please enter unit name')
+      return
+    }
+    try {
+      const res = await fetch('/api/units', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: newUnit.projectId,
+          name: newUnit.name.trim(),
+          nameAr: newUnit.nameAr.trim() || undefined,
+          description: newUnit.description.trim() || undefined
+        })
+      })
+      if (res.ok) {
+        toast.success(language === 'ar' ? 'تمت إضافة الوحدة بنجاح' : 'Unit added successfully')
+        setAddUnitOpen(false)
+        setNewUnit({ projectId: '', name: '', nameAr: '', description: '' })
+        fetchUnits()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        toast.error(err.error || (language === 'ar' ? 'فشل إضافة الوحدة' : 'Failed to add unit'))
+      }
+    } catch (error) {
+      toast.error(language === 'ar' ? 'فشل إضافة الوحدة' : 'Failed to add unit')
+    }
+  }
+
+  // تعديل وحدة
+  const handleEditUnit = async () => {
+    if (!editingUnit) return
+    if (!editingUnit.name.trim()) {
+      toast.error(language === 'ar' ? 'الرجاء إدخال اسم الوحدة' : 'Please enter unit name')
+      return
+    }
+    try {
+      const res = await fetch('/api/units', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingUnit.id,
+          name: editingUnit.name.trim(),
+          nameAr: editingUnit.nameAr?.trim() || null,
+          description: editingUnit.description?.trim() || null,
+          status: editingUnit.status
+        })
+      })
+      if (res.ok) {
+        toast.success(language === 'ar' ? 'تم تحديث الوحدة بنجاح' : 'Unit updated successfully')
+        setEditUnitOpen(false)
+        setEditingUnit(null)
+        fetchUnits()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        toast.error(err.error || (language === 'ar' ? 'فشل تحديث الوحدة' : 'Failed to update unit'))
+      }
+    } catch (error) {
+      toast.error(language === 'ar' ? 'فشل تحديث الوحدة' : 'Failed to update unit')
+    }
+  }
+
+  // حذف وحدة
+  const handleDeleteUnit = async (id: string) => {
+    if (!confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذه الوحدة؟ سيتم فك ارتباط العناصر بها (لن تُحذف العناصر).' : 'Are you sure? Items will be unlinked, not deleted.')) return
+    try {
+      const res = await fetch(`/api/units?id=${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success(language === 'ar' ? 'تم حذف الوحدة' : 'Unit deleted')
+        fetchUnits()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        toast.error(err.error || (language === 'ar' ? 'فشل حذف الوحدة' : 'Failed to delete unit'))
+      }
+    } catch (error) {
+      toast.error(language === 'ar' ? 'فشل حذف الوحدة' : 'Failed to delete unit')
+    }
+  }
+
+  // ربط عنصر موجود بوحدة (أو فك ارتباطه إذا unitId فارغ)
+  const handleLinkItemToUnit = async () => {
+    if (!linkTargetUnit || !linkItemId) {
+      toast.error(language === 'ar' ? 'اختر العنصر أولاً' : 'Select an item first')
+      return
+    }
+    try {
+      const res = await fetch('/api/items', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: linkItemId, unitId: linkTargetUnit.id })
+      })
+      if (res.ok) {
+        toast.success(language === 'ar' ? 'تم ربط العنصر بالوحدة' : 'Item linked to unit')
+        setLinkItemToUnitOpen(false)
+        setLinkItemId('')
+        setLinkTargetUnit(null)
+        fetchUnits()
+        fetchData()
+      } else {
+        toast.error(language === 'ar' ? 'فشل ربط العنصر' : 'Failed to link item')
+      }
+    } catch (error) {
+      toast.error(language === 'ar' ? 'فشل ربط العنصر' : 'Failed to link item')
+    }
+  }
+
+  // فك ارتباط عنصر عن وحدته
+  const handleUnlinkItemFromUnit = async (itemId: string) => {
+    if (!confirm(language === 'ar' ? 'فك ارتباط هذا العنصر بالوحدة؟' : 'Unlink this item from its unit?')) return
+    try {
+      const res = await fetch('/api/items', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: itemId, unitId: null })
+      })
+      if (res.ok) {
+        toast.success(language === 'ar' ? 'تم فك الارتباط' : 'Item unlinked')
+        fetchUnits()
+        fetchData()
+      } else {
+        toast.error(language === 'ar' ? 'فشل فك الارتباط' : 'Failed to unlink')
+      }
+    } catch (error) {
+      toast.error(language === 'ar' ? 'فشل فك الارتباط' : 'Failed to unlink')
+    }
+  }
+
+  // اسم عرض الوحدة
+  const getUnitDisplayName = (unit: Unit) => {
+    return (language === 'ar' ? (unit.nameAr || unit.name) : unit.name)
+  }
+
+  // اسم عرض المشروع من الوحدة
+  const getUnitProjectName = (unit: Unit) => {
+    const p = projects.find(p => p.id === unit.projectId)
+    if (p) return getProjectDisplayName(p)
+    if (unit.project) return language === 'ar' ? (unit.project.nameAr || unit.project.name) : unit.project.name
+    return language === 'ar' ? 'مشروع محذوف' : 'Deleted project'
+  }
+
   const handleAddItem = async () => {
     if (!newItem.name.trim()) {
       toast.error(t.msg_enter_name)
@@ -892,7 +1101,7 @@ export default function Home() {
       const res = await fetch('/api/items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newItem, stages: newStages, projectId: newItem.projectId || null })
+        body: JSON.stringify({ ...newItem, stages: newStages, projectId: newItem.projectId || null, unitId: (newItem as any).unitId || null })
       })
       
       if (res.ok) {
@@ -922,7 +1131,8 @@ export default function Home() {
           id: editingItem.id, name: editingItem.name, image: editingItem.image,
           priority: editingItem.priority, notes: editingItem.notes,
           totalQuantity: editingItem.totalQuantity, deadline: editingItem.deadline,
-          projectId: editingItem.projectId
+          projectId: editingItem.projectId,
+          unitId: (editingItem as any).unitId || null
         })
       })
       
@@ -1516,8 +1726,9 @@ export default function Home() {
       {/* المحتوى الرئيسي */}
       <main className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-white/80 backdrop-blur-sm p-1 rounded-lg shadow-sm print:hidden flex flex-wrap">
+          <TabsList className="bg-white/80 backdrop-blur-sm p-1 rounded-lg shadow-sm print:hidden flex flex-wrap h-auto">
             <TabsTrigger value="projects" className="gap-2"><FolderOpen className="w-4 h-4" /> {language === 'ar' ? 'المشاريع' : 'Projects'}</TabsTrigger>
+            <TabsTrigger value="units" className="gap-2"><Boxes className="w-4 h-4" /> {language === 'ar' ? 'الوحدات' : 'Units'}</TabsTrigger>
             <TabsTrigger value="materials" className="gap-2"><Box className="w-4 h-4" /> {t.nav_materials}</TabsTrigger>
             <TabsTrigger value="items" className="gap-2"><Package className="w-4 h-4" /> {t.nav_items}</TabsTrigger>
             <TabsTrigger value="stages" className="gap-2"><Settings className="w-4 h-4" /> {t.nav_stages}</TabsTrigger>
@@ -2429,6 +2640,558 @@ export default function Home() {
             )}
           </TabsContent>
 
+          {/* تبويب الوحدات */}
+          <TabsContent value="units" className="space-y-4">
+            <div className="flex flex-col gap-3 print:hidden">
+              <div className="flex justify-between items-center flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-bold text-amber-900 flex items-center gap-2">
+                    <Boxes className="w-5 h-5 text-amber-600" />
+                    {language === 'ar' ? 'الوحدات' : 'Units'}
+                    <Badge variant="outline" className="text-amber-700 border-amber-300">{units.length}</Badge>
+                  </h2>
+                </div>
+                {/* فلتر حسب المشروع */}
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-amber-600" />
+                  <Select value={unitsProjectFilter} onValueChange={setUnitsProjectFilter}>
+                    <SelectTrigger className="w-[240px] h-9 text-sm">
+                      <SelectValue placeholder={language === 'ar' ? 'كل المشاريع' : 'All Projects'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{language === 'ar' ? 'كل المشاريع' : 'All Projects'}</SelectItem>
+                      {projects.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{getProjectDisplayName(p)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {currentUser?.role !== 'store_keeper' && (
+                    <Dialog open={addUnitOpen} onOpenChange={setAddUnitOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 h-9">
+                          <Plus className="w-4 h-4" /> {language === 'ar' ? 'إضافة وحدة' : 'Add Unit'}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-lg">
+                        <DialogHeader><DialogTitle>{language === 'ar' ? 'إضافة وحدة جديدة' : 'Add New Unit'}</DialogTitle></DialogHeader>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label className="text-amber-800 font-semibold">{language === 'ar' ? 'المشروع' : 'Project'} *</Label>
+                            <Select
+                              value={newUnit.projectId}
+                              onValueChange={(val) => setNewUnit(prev => ({ ...prev, projectId: val }))}
+                            >
+                              <SelectTrigger><SelectValue placeholder={language === 'ar' ? 'اختر المشروع' : 'Select project'} /></SelectTrigger>
+                              <SelectContent>
+                                {projects.map(p => (
+                                  <SelectItem key={p.id} value={p.id}>{getProjectDisplayName(p)}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-amber-800 font-semibold">{language === 'ar' ? 'اسم الوحدة (إنجليزي)' : 'Unit Name (English)'} *</Label>
+                            <Input
+                              value={newUnit.name}
+                              onChange={(e) => setNewUnit(prev => ({ ...prev, name: e.target.value }))}
+                              placeholder={language === 'ar' ? 'مثال: Entrance Unit' : 'e.g. Entrance Unit'}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-amber-800">{language === 'ar' ? 'اسم الوحدة (عربي)' : 'Unit Name (Arabic)'}</Label>
+                            <Input
+                              value={newUnit.nameAr}
+                              onChange={(e) => setNewUnit(prev => ({ ...prev, nameAr: e.target.value }))}
+                              placeholder={language === 'ar' ? 'مثال: وحدة المدخل' : 'e.g. وحدة المدخل'}
+                              dir="rtl"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-amber-800">{language === 'ar' ? 'وصف الوحدة' : 'Description'}</Label>
+                            <Textarea
+                              value={newUnit.description}
+                              onChange={(e) => setNewUnit(prev => ({ ...prev, description: e.target.value }))}
+                              placeholder={language === 'ar' ? 'وصف مختصر للوحدة (اختياري)' : 'Brief description (optional)'}
+                              rows={3}
+                            />
+                          </div>
+                          <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-xs text-amber-800">
+                            <p className="flex items-start gap-2">
+                              <Layers className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                              <span>
+                                {language === 'ar'
+                                  ? 'الوحدة قسم منطقي داخل المشروع. يمكنك لاحقاً ربط العناصر الموجودة بهذه الوحدة لتنظيم العمل.'
+                                  : 'A unit is a logical section within a project. You can later link existing items to this unit for organization.'}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setAddUnitOpen(false)}>{t.btn_cancel}</Button>
+                          <Button onClick={handleAddUnit} className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">
+                            <Plus className="w-4 h-4" /> {t.btn_save}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              </div>
+
+              {/* قائمة الوحدات حسب المشروع */}
+              {(() => {
+                // فلترة الوحدات حسب المشروع المختار
+                const filteredUnits = units.filter(u =>
+                  unitsProjectFilter === 'all' ? true : u.projectId === unitsProjectFilter
+                )
+
+                if (filteredUnits.length === 0) {
+                  return (
+                    <Card className="p-12 text-center bg-white/60 border-dashed">
+                      <Boxes className="w-16 h-16 text-amber-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-bold text-amber-900 mb-2">
+                        {language === 'ar' ? 'لا توجد وحدات' : 'No units yet'}
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-4">
+                        {language === 'ar'
+                          ? 'ابدأ بإضافة وحدة جديدة لتنظيم عناصر المشروع في مجموعات منطقية.'
+                          : 'Start by adding a unit to organize project items into logical groups.'}
+                      </p>
+                      {currentUser?.role !== 'store_keeper' && (
+                        <Button onClick={() => setAddUnitOpen(true)} className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">
+                          <Plus className="w-4 h-4" /> {language === 'ar' ? 'إضافة أول وحدة' : 'Add First Unit'}
+                        </Button>
+                      )}
+                    </Card>
+                  )
+                }
+
+                // تجميع الوحدات حسب المشروع
+                const unitsByProject = new Map<string, Unit[]>()
+                filteredUnits.forEach(u => {
+                  const list = unitsByProject.get(u.projectId) || []
+                  list.push(u)
+                  unitsByProject.set(u.projectId, list)
+                })
+
+                return (
+                  <div className="space-y-6">
+                    {Array.from(unitsByProject.entries()).map(([projectId, projectUnits]) => {
+                      const project = projects.find(p => p.id === projectId)
+                      if (!project) return null
+                      const projectItems = items.filter(i => i.projectId === projectId)
+                      const itemsWithoutUnit = projectItems.filter(i => !i.unitId)
+
+                      return (
+                        <Card key={projectId} className="overflow-hidden border-amber-200">
+                          {/* رأس المشروع */}
+                          <div className="bg-gradient-to-l from-amber-100 to-orange-50 px-4 py-3 border-b border-amber-200 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold shadow-sm">
+                                {getProjectInitial(project)}
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-amber-900">{getProjectDisplayName(project)}</h3>
+                                <p className="text-xs text-amber-700">
+                                  {project.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{project.location}</span>}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              <Badge variant="outline" className="border-amber-300 text-amber-700">
+                                <Boxes className="w-3 h-3 ml-1" />
+                                {language === 'ar' ? `${projectUnits.length} وحدة` : `${projectUnits.length} units`}
+                              </Badge>
+                              <Badge variant="outline" className="border-gray-300 text-gray-700">
+                                <Package className="w-3 h-3 ml-1" />
+                                {language === 'ar' ? `${projectItems.length} عنصر` : `${projectItems.length} items`}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <CardContent className="p-4 space-y-3">
+                            {/* قائمة الوحدات داخل هذا المشروع */}
+                            {projectUnits.map(unit => {
+                              const unitItems = unit.items || items.filter(i => i.unitId === unit.id)
+                              const isExpanded = expandedUnits[unit.id] ?? false
+                              const completedItems = unitItems.filter(i => i.status === 'completed').length
+                              const unitProgress = unitItems.length > 0 ? Math.round((completedItems / unitItems.length) * 100) : 0
+
+                              return (
+                                <div key={unit.id} className="rounded-lg border border-amber-200 overflow-hidden bg-white">
+                                  {/* رأس الوحدة */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedUnits(prev => ({ ...prev, [unit.id]: !isExpanded }))}
+                                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-amber-50 transition-colors text-right"
+                                  >
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white shadow-sm flex-shrink-0 ${
+                                        unit.status === 'active' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
+                                        unit.status === 'completed' ? 'bg-gradient-to-br from-green-500 to-emerald-600' :
+                                        'bg-gradient-to-br from-gray-400 to-gray-500'
+                                      }`}>
+                                        <Layers className="w-4 h-4" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="font-bold text-amber-900 truncate">{getUnitDisplayName(unit)}</span>
+                                          {unit.status === 'completed' && (
+                                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs">
+                                              {language === 'ar' ? 'مكتملة' : 'Completed'}
+                                            </Badge>
+                                          )}
+                                          {unit.status === 'cancelled' && (
+                                            <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100 text-xs">
+                                              {language === 'ar' ? 'ملغاة' : 'Cancelled'}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        {unit.description && (
+                                          <p className="text-xs text-gray-500 truncate">{unit.description}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 flex-shrink-0">
+                                      <div className="hidden sm:flex flex-col items-end">
+                                        <div className="flex items-center gap-2 text-xs">
+                                          <Package className="w-3 h-3 text-amber-600" />
+                                          <span className="font-semibold text-amber-700">{unitItems.length}</span>
+                                          <span className="text-gray-400">/</span>
+                                          <span className="text-gray-500">{language === 'ar' ? 'عنصر' : 'items'}</span>
+                                        </div>
+                                        {unitItems.length > 0 && (
+                                          <div className="flex items-center gap-1.5 mt-0.5">
+                                            <Progress value={unitProgress} className="h-1.5 w-20" />
+                                            <span className="text-xs font-bold text-amber-600">{unitProgress}%</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      {isExpanded ? <ChevronUp className="w-4 h-4 text-amber-600" /> : <ChevronDown className="w-4 h-4 text-amber-600" />}
+                                    </div>
+                                  </button>
+
+                                  {/* محتوى الوحدة - العناصر */}
+                                  {isExpanded && (
+                                    <div className="border-t border-amber-100 bg-gradient-to-l from-amber-50/30 to-transparent">
+                                      {/* شريط أدوات الوحدة */}
+                                      <div className="px-4 py-2 flex items-center justify-between flex-wrap gap-2 bg-white/50 border-b border-amber-100">
+                                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                                          <FolderTree className="w-3.5 h-3.5 text-amber-600" />
+                                          <span className="font-medium">
+                                            {language === 'ar'
+                                              ? `عناصر الوحدة: ${unitItems.length}`
+                                              : `Unit items: ${unitItems.length}`}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          {currentUser?.role !== 'store_keeper' && (
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-7 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+                                              onClick={() => {
+                                                setLinkTargetUnit(unit)
+                                                setLinkItemId('')
+                                                setLinkItemToUnitOpen(true)
+                                              }}
+                                            >
+                                              <Plus className="w-3 h-3" />
+                                              {language === 'ar' ? 'ربط عنصر' : 'Link Item'}
+                                            </Button>
+                                          )}
+                                          {currentUser?.role !== 'store_keeper' && (
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-7 w-7 p-0"
+                                              onClick={() => {
+                                                setEditingUnit({ ...unit })
+                                                setEditUnitOpen(true)
+                                              }}
+                                            >
+                                              <Edit className="w-3.5 h-3.5 text-blue-500" />
+                                            </Button>
+                                          )}
+                                          {(currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'executive_manager') && (
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-7 w-7 p-0"
+                                              onClick={() => handleDeleteUnit(unit.id)}
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* قائمة العناصر */}
+                                      <div className="p-3">
+                                        {unitItems.length === 0 ? (
+                                          <div className="text-center py-8 text-gray-400">
+                                            <Package className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                                            <p className="text-sm">
+                                              {language === 'ar'
+                                                ? 'لا توجد عناصر في هذه الوحدة بعد.'
+                                                : 'No items in this unit yet.'}
+                                            </p>
+                                            {currentUser?.role !== 'store_keeper' && (
+                                              <p className="text-xs mt-1 text-amber-600">
+                                                {language === 'ar' ? 'انقر على "ربط عنصر" لإضافة عناصر موجودة.' : 'Click "Link Item" to add existing items.'}
+                                              </p>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                            {unitItems.map(item => {
+                                              const itemProgress = item.stages?.length > 0
+                                                ? Math.round((item.stages.filter(s => s.status === 'completed').length / item.stages.length) * 100)
+                                                : 0
+                                              return (
+                                                <div key={item.id} className="rounded-md border border-amber-100 bg-white p-3 hover:shadow-sm transition-shadow">
+                                                  <div className="flex items-start gap-2 mb-2">
+                                                    <div className="flex-shrink-0">
+                                                      {item.image ? (
+                                                        <img src={item.image} alt={item.name} className="w-10 h-10 rounded-md object-cover" />
+                                                      ) : (
+                                                        <div className="w-10 h-10 rounded-md bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-sm">
+                                                          {item.name.charAt(0)}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                      <h4 className="text-sm font-semibold text-amber-900 truncate">{item.name}</h4>
+                                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                                        <Badge className={`text-[10px] px-1.5 py-0 ${getStatusColor(item.status)}`}>
+                                                          {getStatusLabel(item.status)}
+                                                        </Badge>
+                                                        <span className="text-xs text-gray-400">×{item.totalQuantity}</span>
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                  <div className="flex items-center gap-2">
+                                                    <Progress value={itemProgress} className="h-1 flex-1" />
+                                                    <span className="text-xs font-bold text-amber-600">{itemProgress}%</span>
+                                                  </div>
+                                                  <div className="flex items-center justify-between mt-2">
+                                                    <span className="text-[10px] text-gray-400">
+                                                      {item.stages?.filter(s => s.status === 'completed').length || 0}/{item.stages?.length || 0} {language === 'ar' ? 'مرحلة' : 'stages'}
+                                                    </span>
+                                                    {currentUser?.role !== 'store_keeper' && (
+                                                      <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 px-2 text-[10px] text-gray-500 hover:text-red-600"
+                                                        onClick={() => handleUnlinkItemFromUnit(item.id)}
+                                                        title={language === 'ar' ? 'فك الارتباط بالوحدة' : 'Unlink from unit'}
+                                                      >
+                                                        <X className="w-3 h-3" />
+                                                      </Button>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              )
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+
+                            {/* قسم العناصر بدون وحدة في هذا المشروع */}
+                            {itemsWithoutUnit.length > 0 && (
+                              <div className="mt-3 rounded-lg border border-dashed border-gray-200 bg-gray-50/50 p-3">
+                                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                                  <Package className="w-4 h-4 text-gray-400" />
+                                  <span className="font-medium">
+                                    {language === 'ar'
+                                      ? `عناصر بدون وحدة (${itemsWithoutUnit.length})`
+                                      : `Items without unit (${itemsWithoutUnit.length})`}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {itemsWithoutUnit.slice(0, 12).map(item => (
+                                    <Badge key={item.id} variant="outline" className="text-xs bg-white border-gray-200 text-gray-600">
+                                      {item.name}
+                                      {item.totalQuantity > 1 && <span className="text-gray-400 ml-1">×{item.totalQuantity}</span>}
+                                    </Badge>
+                                  ))}
+                                  {itemsWithoutUnit.length > 12 && (
+                                    <Badge variant="outline" className="text-xs bg-gray-100">
+                                      +{itemsWithoutUnit.length - 12}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+            </div>
+
+            {/* نافذة تعديل الوحدة */}
+            <Dialog open={editUnitOpen} onOpenChange={setEditUnitOpen}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader><DialogTitle>{language === 'ar' ? 'تعديل الوحدة' : 'Edit Unit'}</DialogTitle></DialogHeader>
+                {editingUnit && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-amber-800 font-semibold">{language === 'ar' ? 'المشروع' : 'Project'}</Label>
+                      <Input value={getUnitProjectName(editingUnit)} disabled className="bg-gray-50" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-amber-800 font-semibold">{language === 'ar' ? 'اسم الوحدة (إنجليزي)' : 'Unit Name (English)'}</Label>
+                      <Input
+                        value={editingUnit.name}
+                        onChange={(e) => setEditingUnit(prev => prev ? { ...prev, name: e.target.value } : prev)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-amber-800">{language === 'ar' ? 'اسم الوحدة (عربي)' : 'Unit Name (Arabic)'}</Label>
+                      <Input
+                        value={editingUnit.nameAr || ''}
+                        onChange={(e) => setEditingUnit(prev => prev ? { ...prev, nameAr: e.target.value } : prev)}
+                        dir="rtl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-amber-800">{language === 'ar' ? 'وصف الوحدة' : 'Description'}</Label>
+                      <Textarea
+                        value={editingUnit.description || ''}
+                        onChange={(e) => setEditingUnit(prev => prev ? { ...prev, description: e.target.value } : prev)}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-amber-800">{language === 'ar' ? 'حالة الوحدة' : 'Unit Status'}</Label>
+                      <Select
+                        value={editingUnit.status as string}
+                        onValueChange={(val) => setEditingUnit(prev => prev ? { ...prev, status: val } : prev)}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">{language === 'ar' ? 'نشطة' : 'Active'}</SelectItem>
+                          <SelectItem value="completed">{language === 'ar' ? 'مكتملة' : 'Completed'}</SelectItem>
+                          <SelectItem value="cancelled">{language === 'ar' ? 'ملغاة' : 'Cancelled'}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setEditUnitOpen(false)}>{t.btn_cancel}</Button>
+                  <Button onClick={handleEditUnit} className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">
+                    <Edit className="w-4 h-4" /> {language === 'ar' ? 'حفظ التعديلات' : 'Save Changes'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* نافذة ربط عنصر بالوحدة */}
+            <Dialog open={linkItemToUnitOpen} onOpenChange={setLinkItemToUnitOpen}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>
+                    {language === 'ar' ? 'ربط عنصر بالوحدة' : 'Link Item to Unit'}
+                  </DialogTitle>
+                </DialogHeader>
+                {linkTargetUnit && (
+                  <div className="space-y-4">
+                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm">
+                      <p className="text-amber-800">
+                        <span className="font-semibold">{language === 'ar' ? 'الوحدة:' : 'Unit:'}</span>{' '}
+                        {getUnitDisplayName(linkTargetUnit)}
+                      </p>
+                      <p className="text-amber-700 text-xs mt-1">
+                        <span className="font-semibold">{language === 'ar' ? 'المشروع:' : 'Project:'}</span>{' '}
+                        {getUnitProjectName(linkTargetUnit)}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-amber-800 font-semibold">
+                        {language === 'ar' ? 'اختر عنصراً لربطه' : 'Select an item to link'}
+                      </Label>
+                      <Input
+                        type="text"
+                        placeholder={language === 'ar' ? 'بحث عن عنصر...' : 'Search items...'}
+                        value={unitItemSearchQuery}
+                        onChange={(e) => setUnitItemSearchQuery(e.target.value)}
+                        className="mb-2"
+                      />
+                      <div className="max-h-72 overflow-y-auto border border-amber-200 rounded-md divide-y divide-amber-100">
+                        {items
+                          .filter(i => i.projectId === linkTargetUnit.projectId)
+                          .filter(i => !i.unitId || i.unitId !== linkTargetUnit.id)
+                          .filter(i => !unitItemSearchQuery.trim() || i.name.toLowerCase().includes(unitItemSearchQuery.toLowerCase()))
+                          .map(item => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => setLinkItemId(item.id)}
+                              className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-amber-50 transition-colors text-right ${
+                                linkItemId === item.id ? 'bg-amber-100 ring-1 ring-amber-300' : ''
+                              }`}
+                            >
+                              <div className="flex-shrink-0">
+                                {item.image ? (
+                                  <img src={item.image} alt={item.name} className="w-8 h-8 rounded-md object-cover" />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xs font-bold">
+                                    {item.name.charAt(0)}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-amber-900 truncate">{item.name}</p>
+                                <p className="text-xs text-gray-500 flex items-center gap-2 flex-wrap">
+                                  <Badge className={`text-[10px] px-1.5 py-0 ${getStatusColor(item.status)}`}>
+                                    {getStatusLabel(item.status)}
+                                  </Badge>
+                                  <span>×{item.totalQuantity}</span>
+                                  {item.unitId && item.unitId !== linkTargetUnit.id && (
+                                    <span className="text-blue-600">↪ {language === 'ar' ? 'مرتبطة بوحدة أخرى' : 'Linked to another unit'}</span>
+                                  )}
+                                </p>
+                              </div>
+                              {linkItemId === item.id && <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />}
+                            </button>
+                          ))}
+                        {items
+                          .filter(i => i.projectId === linkTargetUnit.projectId)
+                          .filter(i => !i.unitId || i.unitId !== linkTargetUnit.id)
+                          .filter(i => !unitItemSearchQuery.trim() || i.name.toLowerCase().includes(unitItemSearchQuery.toLowerCase()))
+                          .length === 0 && (
+                          <div className="p-4 text-center text-sm text-gray-400">
+                            {language === 'ar' ? 'لا توجد عناصر متاحة في هذا المشروع' : 'No items available in this project'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setLinkItemToUnitOpen(false)}>{t.btn_cancel}</Button>
+                  <Button
+                    onClick={handleLinkItemToUnit}
+                    disabled={!linkItemId}
+                    className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {language === 'ar' ? 'ربط العنصر' : 'Link Item'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+
           {/* تبويب المواد الأولية */}
           <MaterialsTab projects={projects} language={language} t={t} isRTL={isRTL} currentUser={currentUser} />
 
@@ -2509,7 +3272,7 @@ export default function Home() {
                     {/* اختيار المشروع */}
                     <div className="space-y-2">
                       <Label>{language === 'ar' ? 'المشروع' : 'Project'}</Label>
-                      <Select value={newItem.projectId || '_none'} onValueChange={(val) => setNewItem(prev => ({ ...prev, projectId: val === '_none' ? '' : val }))}>
+                      <Select value={newItem.projectId || '_none'} onValueChange={(val) => setNewItem(prev => ({ ...prev, projectId: val === '_none' ? '' : val, ...(prev as any).unitId ? { unitId: '' } : {} }) as any)}>
                         <SelectTrigger>
                           <SelectValue placeholder={language === 'ar' ? 'اختر المشروع (اختياري)' : 'Select Project (optional)'} />
                         </SelectTrigger>
@@ -2523,6 +3286,39 @@ export default function Home() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {/* اختيار الوحدة (يظهر فقط إذا اختير مشروع) */}
+                    {newItem.projectId && (
+                      <div className="space-y-2">
+                        <Label>{language === 'ar' ? 'الوحدة' : 'Unit'} <span className="text-xs text-gray-400">({language === 'ar' ? 'اختياري' : 'optional'})</span></Label>
+                        <Select
+                          value={(newItem as any).unitId || '_none'}
+                          onValueChange={(val) => setNewItem(prev => ({ ...prev, unitId: val === '_none' ? '' : val }) as any)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={language === 'ar' ? 'بدون وحدة' : 'No unit'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_none">{language === 'ar' ? 'بدون وحدة' : 'No unit'}</SelectItem>
+                            {units
+                              .filter(u => u.projectId === newItem.projectId)
+                              .map(unit => (
+                                <SelectItem key={unit.id} value={unit.id}>
+                                  <span className="flex items-center gap-1">
+                                    <Layers className="w-3 h-3" />
+                                    {getUnitDisplayName(unit)}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        {units.filter(u => u.projectId === newItem.projectId).length === 0 && (
+                          <p className="text-xs text-amber-600 flex items-center gap-1">
+                            <Boxes className="w-3 h-3" />
+                            {language === 'ar' ? 'لا توجد وحدات لهذا المشروع بعد. يمكنك إنشاؤها من تبويب الوحدات.' : 'No units for this project yet. You can create them from the Units tab.'}
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>{t.item_name} {t.required}</Label>
@@ -3918,7 +4714,7 @@ export default function Home() {
               {/* اختيار المشروع */}
               <div className="space-y-2">
                 <Label>{language === 'ar' ? 'المشروع' : 'Project'}</Label>
-                <Select value={editingItem.projectId || '_none'} onValueChange={(val) => setEditingItem({ ...editingItem, projectId: val === '_none' ? undefined : val })}>
+                <Select value={editingItem.projectId || '_none'} onValueChange={(val) => setEditingItem({ ...editingItem, projectId: val === '_none' ? undefined : val, unitId: undefined } as any)}>
                   <SelectTrigger>
                     <SelectValue placeholder={language === 'ar' ? 'اختر المشروع (اختياري)' : 'Select Project (optional)'} />
                   </SelectTrigger>
@@ -3932,6 +4728,33 @@ export default function Home() {
                   </SelectContent>
                 </Select>
               </div>
+              {/* اختيار الوحدة (يظهر فقط إذا اختير مشروع) */}
+              {editingItem.projectId && (
+                <div className="space-y-2">
+                  <Label>{language === 'ar' ? 'الوحدة' : 'Unit'} <span className="text-xs text-gray-400">({language === 'ar' ? 'اختياري' : 'optional'})</span></Label>
+                  <Select
+                    value={(editingItem as any).unitId || '_none'}
+                    onValueChange={(val) => setEditingItem({ ...editingItem, unitId: val === '_none' ? undefined : val } as any)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={language === 'ar' ? 'بدون وحدة' : 'No unit'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">{language === 'ar' ? 'بدون وحدة' : 'No unit'}</SelectItem>
+                      {units
+                        .filter(u => u.projectId === editingItem.projectId)
+                        .map(unit => (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            <span className="flex items-center gap-1">
+                              <Layers className="w-3 h-3" />
+                              {getUnitDisplayName(unit)}
+                            </span>
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>{t.item_name}</Label>
                 <Input value={editingItem.name} onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })} />
