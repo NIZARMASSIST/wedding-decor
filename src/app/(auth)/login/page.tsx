@@ -400,7 +400,7 @@ export default function AuthPage() {
                   <button
                     type="button"
                     className="text-sm text-amber-600 hover:text-amber-800 hover:underline"
-                    onClick={() => setErrorMessage(language === 'ar' ? 'ميزة استعادة كلمة المرور قادمة قريباً' : 'Password recovery coming soon')}
+                    onClick={() => router.push('/forgot-password')}
                   >
                     {t.forgot_password}
                   </button>
