@@ -127,6 +127,44 @@ export async function POST(request: NextRequest) {
       results.push(`Error creating unitId foreign key: ${err.message}`)
     }
 
+    // 5) إضافة حقل mainImage (TEXT) لجدول Unit إذا لم يكن موجوداً
+    try {
+      const mainImageColExists = await db.$queryRaw`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'Unit'
+        AND column_name = 'mainImage'
+      ` as any[]
+
+      if (mainImageColExists.length === 0) {
+        await db.$executeRawUnsafe(`ALTER TABLE "Unit" ADD COLUMN "mainImage" TEXT`)
+        results.push('Added column "mainImage" to "Unit"')
+      } else {
+        results.push('Column "mainImage" already exists on "Unit"')
+      }
+    } catch (err: any) {
+      results.push(`Error adding mainImage column: ${err.message}`)
+    }
+
+    // 6) إضافة حقل subImages (TEXT[]) لجدول Unit إذا لم يكن موجوداً
+    try {
+      const subImagesColExists = await db.$queryRaw`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'Unit'
+        AND column_name = 'subImages'
+      ` as any[]
+
+      if (subImagesColExists.length === 0) {
+        await db.$executeRawUnsafe(`ALTER TABLE "Unit" ADD COLUMN "subImages" TEXT[] DEFAULT '{}'`)
+        results.push('Added column "subImages" to "Unit"')
+      } else {
+        results.push('Column "subImages" already exists on "Unit"')
+      }
+    } catch (err: any) {
+      results.push(`Error adding subImages column: ${err.message}`)
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Units migration completed successfully',

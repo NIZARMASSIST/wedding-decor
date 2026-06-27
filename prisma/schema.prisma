@@ -73,16 +73,18 @@ model Project {
 // الوحدات التابعة لكل مشروع - كل وحدة تضم مجموعة عناصر (ProductionItem)
 // الوحدة قسم منطقي داخل المشروع: مثلاً "وحدة المدخل"، "وحدة المنصة"، "وحدة الإضاءة"
 model Unit {
-  id          String   @id @default(cuid())
-  projectId   String   // المشروع الذي تنتمي إليه الوحدة
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  name        String   // اسم الوحدة
-  nameAr      String?  // اسم الوحدة بالعربية (اختياري)
-  description String?  // وصف مختصر للوحدة
-  order       Int      @default(0) // ترتيب الوحدة داخل المشروع
-  status      String   @default("active") // active, completed, cancelled
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  projectId    String   // المشروع الذي تنتمي إليه الوحدة
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name         String   // اسم الوحدة
+  nameAr       String?  // اسم الوحدة بالعربية (اختياري)
+  description  String?  // وصف مختصر للوحدة
+  mainImage    String?  // الصورة الرئيسية للوحدة (URL)
+  subImages    String[] // صور فرعية إضافية (مصفوفة URLs) - @default([])
+  order        Int      @default(0) // ترتيب الوحدة داخل المشروع
+  status       String   @default("active") // active, completed, cancelled
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // العناصر المرتبطة بالوحدة
   items       ProductionItem[]

@@ -105,6 +105,8 @@ export async function POST(request: NextRequest) {
         name: String(data.name).trim(),
         nameAr: data.nameAr?.trim() || null,
         description: data.description?.trim() || null,
+        mainImage: typeof data.mainImage === 'string' ? data.mainImage : null,
+        subImages: Array.isArray(data.subImages) ? data.subImages.filter((s: string) => typeof s === 'string' && s.length > 0) : [],
         order: typeof data.order === 'number' ? data.order : nextOrder,
         status: data.status || 'active'
       },
@@ -154,6 +156,8 @@ export async function PUT(request: NextRequest) {
     if (data.name !== undefined) updateData.name = String(data.name).trim()
     if (data.nameAr !== undefined) updateData.nameAr = data.nameAr?.trim() || null
     if (data.description !== undefined) updateData.description = data.description?.trim() || null
+    if (data.mainImage !== undefined) updateData.mainImage = (typeof data.mainImage === 'string' && data.mainImage.length > 0) ? data.mainImage : null
+    if (data.subImages !== undefined) updateData.subImages = Array.isArray(data.subImages) ? data.subImages.filter((s: string) => typeof s === 'string' && s.length > 0) : []
     if (data.order !== undefined) updateData.order = parseInt(data.order) || 0
     if (data.status !== undefined) updateData.status = data.status
 

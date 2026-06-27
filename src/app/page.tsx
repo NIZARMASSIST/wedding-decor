@@ -14,14 +14,15 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
-import { 
-  Plus, Trash2, Calendar, Clock, Package, Users, 
-  Settings, Printer, ChevronUp, ChevronDown, Edit,
+import {
+  Plus, Trash2, Calendar, Clock, Package, Users,
+  Settings, Printer, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Edit,
   Globe, Paperclip, Download, Eye, Play, CheckCircle2,
   FolderOpen, BarChart3, PieChart, LogOut, User, Upload,
   Search, Filter, Box, X, LayoutGrid, List, ImageIcon,
   MapPin, UserCheck, ClipboardList, MessageCircle, HelpCircle, Calculator,
-  KeyRound, EyeOff, ShieldAlert, Copy, Boxes, Layers, FolderTree
+  KeyRound, EyeOff, ShieldAlert, Copy, Boxes, Layers, FolderTree,
+  ZoomIn, ZoomOut, RotateCcw, RotateCw, Maximize2
 
 } from 'lucide-react'
 import MaterialsTab from '@/components/MaterialsTab'
@@ -121,6 +122,8 @@ interface Unit {
   name: string
   nameAr?: string
   description?: string
+  mainImage?: string | null  // الصورة الرئيسية (data URL)
+  subImages?: string[]       // صور فرعية (مصفوفة data URLs)
   order: number
   status: UnitStatus | string
   items?: ProductionItem[]
@@ -362,12 +365,20 @@ export default function Home() {
   const [expandedUnits, setExpandedUnits] = useState<Record<string, boolean>>({})
   // نافذة إضافة وحدة
   const [addUnitOpen, setAddUnitOpen] = useState(false)
-  const [newUnit, setNewUnit] = useState<{ projectId: string; name: string; nameAr: string; description: string }>({
-    projectId: '', name: '', nameAr: '', description: ''
+  const [newUnit, setNewUnit] = useState<{
+    projectId: string; name: string; nameAr: string; description: string;
+    mainImage: string | null; subImages: string[]
+  }>({
+    projectId: '', name: '', nameAr: '', description: '', mainImage: null, subImages: []
   })
+  const [uploadingUnitImage, setUploadingUnitImage] = useState(false)
   // نافذة تعديل وحدة
   const [editUnitOpen, setEditUnitOpen] = useState(false)
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
+  // نافذة عرض الصورة بزوم
+  const [unitImageViewer, setUnitImageViewer] = useState<{ images: string[]; index: number } | null>(null)
+  const [unitImageZoom, setUnitImageZoom] = useState(1)
+  const [unitImageRotation, setUnitImageRotation] = useState(0)
   // نافذة ربط عنصر بالوحدة
   const [linkItemToUnitOpen, setLinkItemToUnitOpen] = useState(false)
   const [linkTargetUnit, setLinkTargetUnit] = useState<Unit | null>(null)
@@ -945,6 +956,77 @@ export default function Home() {
     }
   }, [])
 
+  // رفع صورة للوحدة (رئيسية أو فرعية)
+  const handleUploadUnitImage = async (file: File, type: 'main' | 'sub'): Promise<string | null> => {
+    try {
+      setUploadingUnitImage(true)
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/units/upload', { method: 'POST', body: formData })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        toast.error(err.error || (language === 'ar' ? 'فشل رفع الصورة' : 'Failed to upload image'))
+        return null
+      }
+      const data = await res.json()
+      return data.url as string
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      toast.error(language === 'ar' ? 'فشل رفع الصورة' : 'Failed to upload image')
+      return null
+    } finally {
+      setUploadingUnitImage(false)
+    }
+  }
+
+  // اختيار الصورة الرئيسية للوحدة الجديدة
+  const onPickNewUnitMainImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = await handleUploadUnitImage(file, 'main')
+    if (url) setNewUnit(prev => ({ ...prev, mainImage: url }))
+    e.target.value = ''
+  }
+
+  // إضافة صورة فرعية للوحدة الجديدة
+  const onPickNewUnitSubImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    const uploaded: string[] = []
+    for (const file of files) {
+      const url = await handleUploadUnitImage(file, 'sub')
+      if (url) uploaded.push(url)
+    }
+    if (uploaded.length > 0) {
+      setNewUnit(prev => ({ ...prev, subImages: [...prev.subImages, ...uploaded] }))
+    }
+    e.target.value = ''
+  }
+
+  // اختيار الصورة الرئيسية للوحدة المُحرّرة
+  const onPickEditingUnitMainImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !editingUnit) return
+    const url = await handleUploadUnitImage(file, 'main')
+    if (url) setEditingUnit(prev => prev ? { ...prev, mainImage: url } : prev)
+    e.target.value = ''
+  }
+
+  // إضافة صورة فرعية للوحدة المُحرّرة
+  const onPickEditingUnitSubImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0 || !editingUnit) return
+    const uploaded: string[] = []
+    for (const file of files) {
+      const url = await handleUploadUnitImage(file, 'sub')
+      if (url) uploaded.push(url)
+    }
+    if (uploaded.length > 0) {
+      setEditingUnit(prev => prev ? { ...prev, subImages: [...(prev.subImages || []), ...uploaded] } : prev)
+    }
+    e.target.value = ''
+  }
+
   // إنشاء وحدة جديدة
   const handleAddUnit = async () => {
     if (!newUnit.projectId) {
@@ -963,13 +1045,15 @@ export default function Home() {
           projectId: newUnit.projectId,
           name: newUnit.name.trim(),
           nameAr: newUnit.nameAr.trim() || undefined,
-          description: newUnit.description.trim() || undefined
+          description: newUnit.description.trim() || undefined,
+          mainImage: newUnit.mainImage,
+          subImages: newUnit.subImages
         })
       })
       if (res.ok) {
         toast.success(language === 'ar' ? 'تمت إضافة الوحدة بنجاح' : 'Unit added successfully')
         setAddUnitOpen(false)
-        setNewUnit({ projectId: '', name: '', nameAr: '', description: '' })
+        setNewUnit({ projectId: '', name: '', nameAr: '', description: '', mainImage: null, subImages: [] })
         fetchUnits()
       } else {
         const err = await res.json().catch(() => ({}))
@@ -996,7 +1080,9 @@ export default function Home() {
           name: editingUnit.name.trim(),
           nameAr: editingUnit.nameAr?.trim() || null,
           description: editingUnit.description?.trim() || null,
-          status: editingUnit.status
+          status: editingUnit.status,
+          mainImage: editingUnit.mainImage || null,
+          subImages: editingUnit.subImages || []
         })
       })
       if (res.ok) {
@@ -2715,6 +2801,87 @@ export default function Home() {
                               rows={3}
                             />
                           </div>
+
+                          {/* الصورة الرئيسية */}
+                          <div className="space-y-2">
+                            <Label className="text-amber-800 font-semibold flex items-center gap-2">
+                              <ImageIcon className="w-4 h-4" />
+                              {language === 'ar' ? 'الصورة الرئيسية للوحدة' : 'Main Image'}
+                            </Label>
+                            {newUnit.mainImage ? (
+                              <div className="relative group">
+                                <img
+                                  src={newUnit.mainImage}
+                                  alt="Main"
+                                  className="w-full h-44 object-cover rounded-lg border border-amber-200 cursor-pointer"
+                                  onClick={() => setUnitImageViewer({ images: [newUnit.mainImage!], index: 0 })}
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="absolute top-2 right-2 h-7 w-7 p-0"
+                                  onClick={() => setNewUnit(prev => ({ ...prev, mainImage: null }))}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-amber-300 rounded-lg cursor-pointer hover:bg-amber-50 transition-colors">
+                                <div className="flex flex-col items-center gap-1 text-amber-700">
+                                  {uploadingUnitImage ? (
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600" />
+                                  ) : (
+                                    <ImageIcon className="w-6 h-6" />
+                                  )}
+                                  <span className="text-xs">{language === 'ar' ? 'اختر صورة رئيسية' : 'Choose main image'}</span>
+                                </div>
+                                <input type="file" accept="image/*" className="hidden" onChange={onPickNewUnitMainImage} disabled={uploadingUnitImage} />
+                              </label>
+                            )}
+                          </div>
+
+                          {/* الصور الفرعية */}
+                          <div className="space-y-2">
+                            <Label className="text-amber-800 font-semibold flex items-center gap-2">
+                              <ImageIcon className="w-4 h-4" />
+                              {language === 'ar' ? 'صور فرعية إضافية' : 'Sub Images'}
+                              {newUnit.subImages.length > 0 && (
+                                <Badge variant="outline" className="text-xs">{newUnit.subImages.length}</Badge>
+                              )}
+                            </Label>
+                            {newUnit.subImages.length > 0 && (
+                              <div className="grid grid-cols-4 gap-2">
+                                {newUnit.subImages.map((img, idx) => (
+                                  <div key={idx} className="relative group">
+                                    <img
+                                      src={img}
+                                      alt={`Sub ${idx + 1}`}
+                                      className="w-full h-20 object-cover rounded-md border border-amber-200 cursor-pointer"
+                                      onClick={() => setUnitImageViewer({ images: newUnit.subImages, index: idx })}
+                                    />
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => setNewUnit(prev => ({ ...prev, subImages: prev.subImages.filter((_, i) => i !== idx) }))}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <label className="flex items-center justify-center w-full h-10 border border-dashed border-amber-300 rounded-md cursor-pointer hover:bg-amber-50 transition-colors text-xs text-amber-700 gap-2">
+                              {uploadingUnitImage ? (
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-amber-600" />
+                              ) : (
+                                <Plus className="w-3.5 h-3.5" />
+                              )}
+                              {language === 'ar' ? 'إضافة صور فرعية' : 'Add sub images'}
+                              <input type="file" accept="image/*" multiple className="hidden" onChange={onPickNewUnitSubImage} disabled={uploadingUnitImage} />
+                            </label>
+                          </div>
+
                           <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-xs text-amber-800">
                             <p className="flex items-start gap-2">
                               <Layers className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -2826,13 +2993,30 @@ export default function Home() {
                                     className="w-full px-4 py-3 flex items-center justify-between hover:bg-amber-50 transition-colors text-right"
                                   >
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white shadow-sm flex-shrink-0 ${
-                                        unit.status === 'active' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
-                                        unit.status === 'completed' ? 'bg-gradient-to-br from-green-500 to-emerald-600' :
-                                        'bg-gradient-to-br from-gray-400 to-gray-500'
-                                      }`}>
-                                        <Layers className="w-4 h-4" />
-                                      </div>
+                                      {/* الصورة الرئيسية أو الأيقونة */}
+                                      {unit.mainImage ? (
+                                        <div
+                                          className="w-12 h-12 rounded-lg overflow-hidden border border-amber-200 flex-shrink-0 cursor-pointer relative group"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            const allImgs = [unit.mainImage!, ...(unit.subImages || [])]
+                                            setUnitImageViewer({ images: allImgs, index: 0 })
+                                          }}
+                                        >
+                                          <img src={unit.mainImage} alt={getUnitDisplayName(unit)} className="w-full h-full object-cover" />
+                                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                            <Maximize2 className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white shadow-sm flex-shrink-0 ${
+                                          unit.status === 'active' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
+                                          unit.status === 'completed' ? 'bg-gradient-to-br from-green-500 to-emerald-600' :
+                                          'bg-gradient-to-br from-gray-400 to-gray-500'
+                                        }`}>
+                                          <Layers className="w-4 h-4" />
+                                        </div>
+                                      )}
                                       <div className="min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
                                           <span className="font-bold text-amber-900 truncate">{getUnitDisplayName(unit)}</span>
@@ -2844,6 +3028,18 @@ export default function Home() {
                                           {unit.status === 'cancelled' && (
                                             <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100 text-xs">
                                               {language === 'ar' ? 'ملغاة' : 'Cancelled'}
+                                            </Badge>
+                                          )}
+                                          {unit.mainImage && (unit.subImages?.length || 0) > 0 && (
+                                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-xs gap-1">
+                                              <ImageIcon className="w-3 h-3" />
+                                              {1 + (unit.subImages?.length || 0)}
+                                            </Badge>
+                                          )}
+                                          {!unit.mainImage && (unit.subImages?.length || 0) > 0 && (
+                                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-xs gap-1">
+                                              <ImageIcon className="w-3 h-3" />
+                                              {unit.subImages?.length}
                                             </Badge>
                                           )}
                                         </div>
@@ -2925,6 +3121,47 @@ export default function Home() {
                                           )}
                                         </div>
                                       </div>
+
+                                      {/* معرض صور الوحدة */}
+                                      {(unit.mainImage || (unit.subImages && unit.subImages.length > 0)) && (
+                                        <div className="px-4 py-3 border-b border-amber-100 bg-white/40">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <ImageIcon className="w-3.5 h-3.5 text-amber-600" />
+                                            <span className="text-xs font-semibold text-amber-800">
+                                              {language === 'ar' ? 'صور الوحدة' : 'Unit Images'}
+                                            </span>
+                                            <Badge variant="outline" className="text-xs">
+                                              {(unit.mainImage ? 1 : 0) + (unit.subImages?.length || 0)}
+                                            </Badge>
+                                          </div>
+                                          <div className="flex gap-2 overflow-x-auto pb-1">
+                                            {unit.mainImage && (
+                                              <img
+                                                src={unit.mainImage}
+                                                alt="Main"
+                                                className="w-20 h-20 object-cover rounded-md border-2 border-amber-300 cursor-pointer flex-shrink-0 hover:opacity-90 transition-opacity"
+                                                onClick={() => {
+                                                  const allImgs = [unit.mainImage!, ...(unit.subImages || [])]
+                                                  setUnitImageViewer({ images: allImgs, index: 0 })
+                                                }}
+                                              />
+                                            )}
+                                            {unit.subImages?.map((img, idx) => (
+                                              <img
+                                                key={idx}
+                                                src={img}
+                                                alt={`Sub ${idx + 1}`}
+                                                className="w-20 h-20 object-cover rounded-md border border-amber-200 cursor-pointer flex-shrink-0 hover:opacity-90 transition-opacity"
+                                                onClick={() => {
+                                                  const allImgs = [unit.mainImage!, ...(unit.subImages || [])]
+                                                  const startIdx = unit.mainImage ? 1 + idx : idx
+                                                  setUnitImageViewer({ images: allImgs, index: startIdx })
+                                                }}
+                                              />
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
 
                                       {/* قائمة العناصر */}
                                       <div className="p-3">
@@ -3083,6 +3320,86 @@ export default function Home() {
                           <SelectItem value="cancelled">{language === 'ar' ? 'ملغاة' : 'Cancelled'}</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    {/* الصورة الرئيسية */}
+                    <div className="space-y-2">
+                      <Label className="text-amber-800 font-semibold flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4" />
+                        {language === 'ar' ? 'الصورة الرئيسية للوحدة' : 'Main Image'}
+                      </Label>
+                      {editingUnit.mainImage ? (
+                        <div className="relative group">
+                          <img
+                            src={editingUnit.mainImage}
+                            alt="Main"
+                            className="w-full h-44 object-cover rounded-lg border border-amber-200 cursor-pointer"
+                            onClick={() => setUnitImageViewer({ images: [editingUnit.mainImage!], index: 0 })}
+                          />
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="absolute top-2 right-2 h-7 w-7 p-0"
+                            onClick={() => setEditingUnit(prev => prev ? { ...prev, mainImage: null } : prev)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-amber-300 rounded-lg cursor-pointer hover:bg-amber-50 transition-colors">
+                          <div className="flex flex-col items-center gap-1 text-amber-700">
+                            {uploadingUnitImage ? (
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600" />
+                            ) : (
+                              <ImageIcon className="w-6 h-6" />
+                            )}
+                            <span className="text-xs">{language === 'ar' ? 'اختر صورة رئيسية' : 'Choose main image'}</span>
+                          </div>
+                          <input type="file" accept="image/*" className="hidden" onChange={onPickEditingUnitMainImage} disabled={uploadingUnitImage} />
+                        </label>
+                      )}
+                    </div>
+
+                    {/* الصور الفرعية */}
+                    <div className="space-y-2">
+                      <Label className="text-amber-800 font-semibold flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4" />
+                        {language === 'ar' ? 'صور فرعية إضافية' : 'Sub Images'}
+                        {(editingUnit.subImages?.length || 0) > 0 && (
+                          <Badge variant="outline" className="text-xs">{editingUnit.subImages!.length}</Badge>
+                        )}
+                      </Label>
+                      {(editingUnit.subImages?.length || 0) > 0 && (
+                        <div className="grid grid-cols-4 gap-2">
+                          {editingUnit.subImages!.map((img, idx) => (
+                            <div key={idx} className="relative group">
+                              <img
+                                src={img}
+                                alt={`Sub ${idx + 1}`}
+                                className="w-full h-20 object-cover rounded-md border border-amber-200 cursor-pointer"
+                                onClick={() => setUnitImageViewer({ images: editingUnit.subImages!, index: idx })}
+                              />
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => setEditingUnit(prev => prev ? { ...prev, subImages: (prev.subImages || []).filter((_, i) => i !== idx) } : prev)}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <label className="flex items-center justify-center w-full h-10 border border-dashed border-amber-300 rounded-md cursor-pointer hover:bg-amber-50 transition-colors text-xs text-amber-700 gap-2">
+                        {uploadingUnitImage ? (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-amber-600" />
+                        ) : (
+                          <Plus className="w-3.5 h-3.5" />
+                        )}
+                        {language === 'ar' ? 'إضافة صور فرعية' : 'Add sub images'}
+                        <input type="file" accept="image/*" multiple className="hidden" onChange={onPickEditingUnitSubImage} disabled={uploadingUnitImage} />
+                      </label>
                     </div>
                   </div>
                 )}
@@ -4407,6 +4724,180 @@ export default function Home() {
           )}
         </Tabs>
       </main>
+
+      {/* نافذة عرض الصورة بزوم - Lightbox */}
+      {unitImageViewer && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center select-none"
+          onClick={() => setUnitImageViewer(null)}
+        >
+          {/* أزرار التحكم */}
+          <div className="absolute top-4 right-4 flex items-center gap-2 z-10" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 h-9 px-3"
+              onClick={() => {
+                const newScale = Math.max(0.5, unitImageZoom - 0.25)
+                setUnitImageZoom(newScale)
+              }}
+              title={language === 'ar' ? 'تصغير' : 'Zoom out'}
+            >
+              <ZoomOut className="w-4 h-4" />
+            </Button>
+            <Badge variant="outline" className="bg-white/10 border-white/20 text-white">
+              {Math.round(unitImageZoom * 100)}%
+            </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 h-9 px-3"
+              onClick={() => {
+                const newScale = Math.min(4, unitImageZoom + 0.25)
+                setUnitImageZoom(newScale)
+              }}
+              title={language === 'ar' ? 'تكبير' : 'Zoom in'}
+            >
+              <ZoomIn className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 h-9 px-3"
+              onClick={() => {
+                setUnitImageZoom(1)
+                setUnitImageRotation(0)
+              }}
+              title={language === 'ar' ? 'إعادة الضبط' : 'Reset'}
+            >
+              <RotateCcw className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 h-9 px-3"
+              onClick={() => setUnitImageRotation((r) => (r + 90) % 360)}
+              title={language === 'ar' ? 'تدوير' : 'Rotate'}
+            >
+              <RotateCw className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-red-500/20 border-red-400/30 text-red-200 hover:bg-red-500/30 h-9 px-3"
+              onClick={() => {
+                setUnitImageViewer(null)
+                setUnitImageZoom(1)
+                setUnitImageRotation(0)
+              }}
+              title={language === 'ar' ? 'إغلاق' : 'Close'}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* عداد الصور */}
+          {unitImageViewer.images.length > 1 && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10" onClick={(e) => e.stopPropagation()}>
+              <Badge variant="outline" className="bg-white/10 border-white/20 text-white">
+                {unitImageViewer.index + 1} / {unitImageViewer.images.length}
+              </Badge>
+            </div>
+          )}
+
+          {/* أسهم التنقل */}
+          {unitImageViewer.images.length > 1 && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 border-white/20 text-white hover:bg-white/20 h-12 w-12 p-0 rounded-full z-10"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setUnitImageViewer(prev => prev ? {
+                    ...prev,
+                    index: (prev.index - 1 + prev.images.length) % prev.images.length
+                  } : prev)
+                  setUnitImageZoom(1)
+                  setUnitImageRotation(0)
+                }}
+                title={language === 'ar' ? 'السابق' : 'Previous'}
+              >
+                <ChevronRight className="w-6 h-6" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 border-white/20 text-white hover:bg-white/20 h-12 w-12 p-0 rounded-full z-10"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setUnitImageViewer(prev => prev ? {
+                    ...prev,
+                    index: (prev.index + 1) % prev.images.length
+                  } : prev)
+                  setUnitImageZoom(1)
+                  setUnitImageRotation(0)
+                }}
+                title={language === 'ar' ? 'التالي' : 'Next'}
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </Button>
+            </>
+          )}
+
+          {/* الصورة - قابلة للتكبير بالعجلة */}
+          <div
+            className="overflow-auto max-w-[90vw] max-h-[90vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+            onWheel={(e) => {
+              e.preventDefault()
+              const delta = e.deltaY > 0 ? -0.15 : 0.15
+              const newScale = Math.max(0.5, Math.min(4, unitImageZoom + delta))
+              setUnitImageZoom(newScale)
+            }}
+            style={{ cursor: unitImageZoom > 1 ? 'grab' : 'default' }}
+          >
+            <img
+              src={unitImageViewer.images[unitImageViewer.index]}
+              alt="Unit image"
+              className="max-w-none transition-transform duration-150"
+              style={{
+                transform: `scale(${unitImageZoom}) rotate(${unitImageRotation}deg)`,
+                transformOrigin: 'center center',
+                maxWidth: unitImageZoom === 1 ? '90vw' : 'none',
+                maxHeight: unitImageZoom === 1 ? '90vh' : 'none',
+              }}
+              draggable={false}
+            />
+          </div>
+
+          {/* مصغّرات الصور في الأسفل */}
+          {unitImageViewer.images.length > 1 && (
+            <div
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10 max-w-[90vw] overflow-x-auto p-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {unitImageViewer.images.map((img, idx) => (
+                <img
+                  key={idx}
+                  src={img}
+                  alt={`Thumb ${idx + 1}`}
+                  className={`w-14 h-14 object-cover rounded cursor-pointer border-2 flex-shrink-0 transition-all ${
+                    idx === unitImageViewer.index
+                      ? 'border-amber-400 opacity-100 scale-105'
+                      : 'border-white/20 opacity-60 hover:opacity-90'
+                  }`}
+                  onClick={() => {
+                    setUnitImageViewer(prev => prev ? { ...prev, index: idx } : prev)
+                    setUnitImageZoom(1)
+                    setUnitImageRotation(0)
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* نافذة إعادة تعيين كلمة المرور - للصيانة/المدير العام فقط */}
       <Dialog open={!!resetPasswordUser} onOpenChange={(open) => { if (!open) { setResetPasswordUser(null); setNewPasswordValue(''); setShowNewPassword(false) } }}>
