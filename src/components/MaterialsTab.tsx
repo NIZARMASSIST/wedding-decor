@@ -42,12 +42,15 @@ interface Material {
   id: string
   name: string
   nameAr?: string
+  itemCode?: string | null
   unit: string
   unitAr?: string
   category: string
   categoryAr?: string
+  department?: string | null
   unitPrice: number
   stockQuantity: number
+  minStockLevel?: number | null
   status: string
   description?: string
   type: string
@@ -94,9 +97,9 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
   const [viewingProjectMaterials, setViewingProjectMaterials] = useState<string>('')
 
   const [newMaterial, setNewMaterial] = useState({
-    name: '', nameAr: '', unit: 'PCS', unitAr: '-', category: 'CARPENTER',
-    categoryAr: '-', unitPrice: 0, stockQuantity: 0, status: 'active',
-    description: '', type: 'raw'
+    name: '', nameAr: '', itemCode: '', unit: 'PCS', unitAr: '-', category: 'CARPENTER',
+    categoryAr: '-', department: '', unitPrice: 0, stockQuantity: 0, minStockLevel: '',
+    status: 'active', description: '', type: 'raw'
   })
 
   // جلب المواد
@@ -143,7 +146,7 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
       if (res.ok) {
         toast.success(t.msg_material_added)
         setAddMaterialOpen(false)
-        setNewMaterial({ name: '', nameAr: '', unit: 'PCS', unitAr: '-', category: 'CARPENTER', categoryAr: '-', unitPrice: 0, stockQuantity: 0, status: 'active', description: '', type: 'raw' })
+        setNewMaterial({ name: '', nameAr: '', itemCode: '', unit: 'PCS', unitAr: '-', category: 'CARPENTER', categoryAr: '-', department: '', unitPrice: 0, stockQuantity: 0, minStockLevel: '', status: 'active', description: '', type: 'raw' })
         fetchMaterials()
       } else {
         const errData = await res.json().catch(() => ({}))
@@ -324,35 +327,35 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
+                      <Label>{language === 'ar' ? 'كود المادة' : 'Item Code'} *</Label>
+                      <Input value={newMaterial.itemCode} onChange={(e) => setNewMaterial(prev => ({ ...prev, itemCode: e.target.value }))} placeholder={language === 'ar' ? 'مثال: 541101840001' : 'e.g. 541101840001'} />
+                    </div>
+                    <div className="space-y-2">
                       <Label>{t.material_name} *</Label>
                       <Input value={newMaterial.name} onChange={(e) => setNewMaterial(prev => ({ ...prev, name: e.target.value }))} placeholder={t.material_name_placeholder} />
                     </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>{t.material_name_ar}</Label>
                       <Input value={newMaterial.nameAr} onChange={(e) => setNewMaterial(prev => ({ ...prev, nameAr: e.target.value }))} />
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>{t.material_unit}</Label>
                       <Select value={newMaterial.unit} onValueChange={(val) => setNewMaterial(prev => ({ ...prev, unit: val }))}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {['PCS', 'Pcs', 'PKT', 'Pkt', 'SHT', 'Sht', 'BDL', 'BLOCK', 'BOX', 'BTL', 'Btl', 'DRM', 'GAL', 'Gal', 'LTR', 'NOS', 'Nos', 'PAIR', 'PAR', 'RL', 'Rol', 'SET', 'TIN'].map(u => (
+                          {['PCS', 'Pcs', 'PKT', 'Pkt', 'SHT', 'Sht', 'BDL', 'BLOCK', 'BOX', 'BTL', 'Btl', 'DRM', 'GAL', 'Gal', 'LTR', 'NOS', 'Nos', 'PAIR', 'PAR', 'RL', 'Rol', 'SET', 'TIN', 'Mtr', 'MTR'].map(u => (
                             <SelectItem key={u} value={u}>{u}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>{t.material_unit_ar}</Label>
-                      <Input value={newMaterial.unitAr} onChange={(e) => setNewMaterial(prev => ({ ...prev, unitAr: e.target.value }))} />
-                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>{t.material_category}</Label>
-                      <Select value={newMaterial.category} onValueChange={(val) => setNewMaterial(prev => ({ ...prev, category: val }))}>
+                      <Select value={newMaterial.category} onValueChange={(val) => setNewMaterial(prev => ({ ...prev, category: val, department: val }))}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="CARPENTER">{t.cat_carpenter}</SelectItem>
@@ -361,6 +364,7 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                           <SelectItem value="FOAM AND DESIGN WORK">{t.cat_foam}</SelectItem>
                           <SelectItem value="TAILOR WORK">{t.cat_tailor}</SelectItem>
                           <SelectItem value="GENERAL WORK">{t.cat_general}</SelectItem>
+                          <SelectItem value="PARKE">{language === 'ar' ? 'باركيه' : 'Parke'}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -376,8 +380,14 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                     </div>
                     <div className="space-y-2">
                       <Label>{t.material_stock}</Label>
-                      <Input type="number" min="0" value={newMaterial.stockQuantity} onChange={(e) => setNewMaterial(prev => ({ ...prev, stockQuantity: parseInt(e.target.value) || 0 }))} />
+                      <Input type="number" step="0.01" min="0" value={newMaterial.stockQuantity} onChange={(e) => setNewMaterial(prev => ({ ...prev, stockQuantity: parseFloat(e.target.value) || 0 }))} />
                     </div>
+                    <div className="space-y-2">
+                      <Label>{language === 'ar' ? 'الحد الأدنى' : 'Min Level'}</Label>
+                      <Input type="number" step="0.01" min="0" value={newMaterial.minStockLevel} onChange={(e) => setNewMaterial(prev => ({ ...prev, minStockLevel: e.target.value }))} placeholder="0" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>{t.material_type}</Label>
                       <Select value={newMaterial.type} onValueChange={(val) => setNewMaterial(prev => ({ ...prev, type: val }))}>
@@ -387,6 +397,10 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                           <SelectItem value="operational">{t.materials_operational}</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{language === 'ar' ? 'القسم' : 'Department'}</Label>
+                      <Input value={newMaterial.department} onChange={(e) => setNewMaterial(prev => ({ ...prev, department: e.target.value }))} placeholder={language === 'ar' ? 'CARPENTER, PAINTER, إلخ' : 'CARPENTER, PAINTER, etc.'} />
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -495,6 +509,7 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
               <TableHeader>
                 <TableRow>
                   <TableHead>#</TableHead>
+                  <TableHead>{language === 'ar' ? 'الكود' : 'Code'}</TableHead>
                   <TableHead>{t.material_name}</TableHead>
                   <TableHead>{t.material_unit}</TableHead>
                   <TableHead>{t.material_category}</TableHead>
@@ -508,7 +523,13 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
               <TableBody>
                 {materials
                   .filter(m => {
-                    if (materialSearch && !m.name.toLowerCase().includes(materialSearch.toLowerCase()) && !(m.nameAr || '').includes(materialSearch)) return false
+                    if (materialSearch) {
+                      const q = materialSearch.toLowerCase()
+                      if (!m.name.toLowerCase().includes(q) &&
+                          !(m.nameAr || '').includes(materialSearch) &&
+                          !(m.itemCode || '').toLowerCase().includes(q) &&
+                          !(m.description || '').toLowerCase().includes(q)) return false
+                    }
                     if (materialCategoryFilter && m.category !== materialCategoryFilter) return false
                     if (materialTypeFilter && m.type !== materialTypeFilter) return false
                     return true
@@ -517,10 +538,20 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                   <TableRow key={material.id}>
                     <TableCell>{idx + 1}</TableCell>
                     <TableCell>
+                      {material.itemCode ? (
+                        <code className="text-xs bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded font-mono">{material.itemCode}</code>
+                      ) : (
+                        <span className="text-gray-300 text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <div>
                         <div className="font-medium text-sm">{material.name}</div>
                         {material.nameAr && material.nameAr !== '-' && (
                           <div className="text-xs text-gray-500">{material.nameAr}</div>
+                        )}
+                        {material.department && (
+                          <div className="text-[10px] text-amber-700 mt-0.5">{material.department}</div>
                         )}
                       </div>
                     </TableCell>
@@ -531,7 +562,14 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                       </Badge>
                     </TableCell>
                     <TableCell>{material.unitPrice.toFixed(2)} {language === 'ar' ? 'ر.ق' : 'QR'}</TableCell>
-                    <TableCell>{material.stockQuantity}</TableCell>
+                    <TableCell>
+                      <span className={`font-medium ${(material.stockQuantity || 0) <= (material.minStockLevel || 0) ? 'text-red-600' : ''}`}>
+                        {material.stockQuantity}
+                      </span>
+                      {material.minStockLevel && material.minStockLevel > 0 && (material.stockQuantity || 0) <= material.minStockLevel && (
+                        <div className="text-[10px] text-red-500">{language === 'ar' ? 'منخفض' : 'Low'}</div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge className={material.type === 'raw' ? 'bg-blue-500' : 'bg-orange-500'}>
                         {material.type === 'raw' ? t.materials_raw : t.materials_operational}
@@ -665,28 +703,28 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>{t.material_name} *</Label>
-                  <Input value={editingMaterial.name} onChange={(e) => setEditingMaterial(prev => prev ? ({ ...prev, name: e.target.value }) : prev)} />
+                  <Label>{language === 'ar' ? 'كود المادة' : 'Item Code'}</Label>
+                  <Input value={editingMaterial.itemCode || ''} onChange={(e) => setEditingMaterial(prev => prev ? ({ ...prev, itemCode: e.target.value }) : prev)} placeholder={language === 'ar' ? 'مثال: 541101840001' : 'e.g. 541101840001'} />
                 </div>
                 <div className="space-y-2">
-                  <Label>{t.material_name_ar}</Label>
-                  <Input value={editingMaterial.nameAr || ''} onChange={(e) => setEditingMaterial(prev => prev ? ({ ...prev, nameAr: e.target.value }) : prev)} />
+                  <Label>{t.material_name} *</Label>
+                  <Input value={editingMaterial.name} onChange={(e) => setEditingMaterial(prev => prev ? ({ ...prev, name: e.target.value }) : prev)} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>{t.material_unit}</Label>
-                  <Input value={editingMaterial.unit} onChange={(e) => setEditingMaterial(prev => prev ? ({ ...prev, unit: e.target.value }) : prev)} />
+                  <Label>{t.material_name_ar}</Label>
+                  <Input value={editingMaterial.nameAr || ''} onChange={(e) => setEditingMaterial(prev => prev ? ({ ...prev, nameAr: e.target.value }) : prev)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>{t.material_unit_ar}</Label>
-                  <Input value={editingMaterial.unitAr || ''} onChange={(e) => setEditingMaterial(prev => prev ? ({ ...prev, unitAr: e.target.value }) : prev)} />
+                  <Label>{t.material_unit}</Label>
+                  <Input value={editingMaterial.unit} onChange={(e) => setEditingMaterial(prev => prev ? ({ ...prev, unit: e.target.value }) : prev)} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t.material_category}</Label>
-                  <Select value={editingMaterial.category} onValueChange={(val) => setEditingMaterial(prev => prev ? ({ ...prev, category: val }) : prev)}>
+                  <Select value={editingMaterial.category} onValueChange={(val) => setEditingMaterial(prev => prev ? ({ ...prev, category: val, department: val }) : prev)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="CARPENTER">{t.cat_carpenter}</SelectItem>
@@ -695,12 +733,23 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                       <SelectItem value="FOAM AND DESIGN WORK">{t.cat_foam}</SelectItem>
                       <SelectItem value="TAILOR WORK">{t.cat_tailor}</SelectItem>
                       <SelectItem value="GENERAL WORK">{t.cat_general}</SelectItem>
+                      <SelectItem value="PARKE">{language === 'ar' ? 'باركيه' : 'Parke'}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>{t.material_category_ar}</Label>
                   <Input value={editingMaterial.categoryAr || ''} onChange={(e) => setEditingMaterial(prev => prev ? ({ ...prev, categoryAr: e.target.value }) : prev)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{language === 'ar' ? 'القسم' : 'Department'}</Label>
+                  <Input value={editingMaterial.department || ''} onChange={(e) => setEditingMaterial(prev => prev ? ({ ...prev, department: e.target.value }) : prev)} placeholder="CARPENTER, PAINTER, etc." />
+                </div>
+                <div className="space-y-2">
+                  <Label>{language === 'ar' ? 'الحد الأدنى' : 'Min Level'}</Label>
+                  <Input type="number" step="0.01" min="0" value={editingMaterial.minStockLevel ?? ''} onChange={(e) => setEditingMaterial(prev => prev ? ({ ...prev, minStockLevel: e.target.value === '' ? null : parseFloat(e.target.value) }) : prev)} placeholder="0" />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
@@ -710,7 +759,7 @@ export default function MaterialsTab({ projects, language, t, isRTL, currentUser
                 </div>
                 <div className="space-y-2">
                   <Label>{t.material_stock}</Label>
-                  <Input type="number" min="0" value={editingMaterial.stockQuantity} onChange={(e) => setEditingMaterial(prev => prev ? ({ ...prev, stockQuantity: parseInt(e.target.value) || 0 }) : prev)} />
+                  <Input type="number" step="0.01" min="0" value={editingMaterial.stockQuantity} onChange={(e) => setEditingMaterial(prev => prev ? ({ ...prev, stockQuantity: parseFloat(e.target.value) || 0 }) : prev)} />
                 </div>
                 <div className="space-y-2">
                   <Label>{t.material_type}</Label>

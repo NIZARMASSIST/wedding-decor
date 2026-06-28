@@ -66,6 +66,7 @@ model Project {
   items             ProductionItem[]
   projectMaterials  ProjectMaterial[] // المواد المطلوبة للمشروع (يضيفها منشئ المشروع فقط)
   usedMaterials     UsedMaterial[]   // المواد المستعملة في المشروع (يضيفها الستور كيبر فقط)
+  stockTransactions StockTransaction[] // حركات المخزون المرتبطة بالمشروع
   changeLogs        ChangeLog[]
   notifications     Notification[]
 }
@@ -204,22 +205,27 @@ model Material {
   id            String   @id @default(cuid())
   name          String   // اسم المادة بالإنجليزية
   nameAr        String?  // اسم المادة بالعربية
-  unit          String   // الوحدة (PCS, PKT, SHT, etc.)
+  itemCode      String?  @unique // كود المادة (مثل 541101840001) - فريد
+  unit          String   // الوحدة (PCS, PKT, SHT, Mtr, GAL, BDL, etc.)
   unitAr        String?  // الوحدة بالعربية
   category      String   // الفئة (CARPENTER, PAINTER, etc.)
   categoryAr    String?  // الفئة بالعربية
-  unitPrice     Float    @default(0) // سعر الوحدة
-  stockQuantity  Int      @default(0) // الكمية في المخزون
+  department    String?  // القسم (CARPENTER, TAILOR WORK, PAINTER, STEEL FABRICATION, GENERAL WORK, PARKE)
+  unitPrice     Float    @default(0) // سعر الوحدة (آخر سعر شراء)
+  stockQuantity  Float    @default(0) // الكمية في المخزون (الرصيد الفعلي)
+  minStockLevel Float?   // الحد الأدنى للتنبيه
   status        String   @default("active") // active, inactive
   description   String?  // وصف المادة
   type          String   @default("raw") // raw: مواد أولية, operational: مواد تشغيلية
   projectMaterials ProjectMaterial[] // ارتباطات المشاريع (المواد المطلوبة)
   usedMaterials    UsedMaterial[]    // ارتباطات المواد المستعملة
+  stockTransactions StockTransaction[] // حركات المخزون المرتبطة
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@index([category])
   @@index([type])
+  @@index([department])
 }
 
 // المواد المطلوبة للمشروع - يضيفها منشئ المشروع فقط
@@ -246,8 +252,11 @@ model UsedMaterial {
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   materialId  String   // المادة
   material    Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
-  quantity    Int      @default(0) // الكمية المستعملة
+  quantity    Float    @default(0) // الكمية المستعملة (Float لدعم الكسور مثل 1.5 متر)
+  price       Float    @default(0) // سعر الوحدة وقت الاستخدام
+  department  String?  // القسم المستخدم (CARPENTER, PAINTER, إلخ)
   notes       String?  // ملاحظات
+  transactionId String? // ربط بحركة المخزون التلقائية
   addedById   String   // من أضاف المادة المستعملة (الستور كيبر)
   addedBy     User     @relation(fields: [addedById], references: [id])
   createdAt   DateTime @default(now())
@@ -256,6 +265,38 @@ model UsedMaterial {
   @@index([projectId])
   @@index([materialId])
   @@index([addedById])
+  @@index([department])
+}
+
+// حركات المخزون - سجل كامل لكل دخول/خروج للمادة (مثل Sheet1 في ملف STOCK DETAILS)
+// كل حركة: تاريخ، كود المادة، الوصف، الوحدة، الكمية (دخل/خرج)، السعر، القسم، الرصيد بعد الحركة
+model StockTransaction {
+  id            String   @id @default(cuid())
+  materialId    String?  // المادة (اختياري - قد تكون حركة لمادة غير مسجلة بعد)
+  material      Material? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  projectId     String?  // المشروع المرتبط (اختياري - للحركات الخاصة بمشاريع)
+  project       Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  itemCode      String?  // كود المادة (لقطة وقت الحركة)
+  description   String?  // وصف المادة (لقطة وقت الحركة)
+  uom           String?  // وحدة القياس (Mtr, PCS, SHT, GAL, إلخ)
+  date          DateTime @default(now()) // تاريخ الحركة
+  deliveryQty   Float    @default(0) // الكمية: موجبة = دخل، سالبة = خرج
+  price         Float    @default(0) // سعر الوحدة
+  totalPrice    Float    @default(0) // إجمالي القيمة = |deliveryQty| * price
+  department    String?  // القسم (CARPENTER, TAILOR WORK, PAINTER, STEEL FABRICATION, GENERAL WORK, PARKE)
+  balanceAfter  Float?   // الرصيد بعد هذه الحركة (PHYSICAL LIST)
+  type          String   @default("delivery") // delivery (دخل), usage (استخدام), adjustment (تسوية), opening (رصيد افتتاحي), return (مرتجع)
+  notes         String?  // ملاحظات
+  reference     String?  // مرجع (رقم فاتورة، رقم إشعار، إلخ)
+  createdById   String?  // من سجّل الحركة
+  createdAt     DateTime @default(now())
+
+  @@index([materialId])
+  @@index([projectId])
+  @@index([date])
+  @@index([department])
+  @@index([type])
+  @@index([itemCode])
 }
 
 // سجل التغييرات - لتتبع تعديلات المشرفين

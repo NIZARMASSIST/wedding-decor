@@ -162,12 +162,15 @@ interface Material {
   id: string
   name: string
   nameAr?: string
+  itemCode?: string | null
   unit: string
   unitAr?: string
   category: string
   categoryAr?: string
+  department?: string | null
   unitPrice: number
   stockQuantity: number
+  minStockLevel?: number | null
   status: string
   description?: string
   type: string
@@ -339,8 +342,25 @@ export default function Home() {
   const [selectedProjectForUsedMaterial, setSelectedProjectForUsedMaterial] = useState('')
   const [selectedMaterialForUsedMaterial, setSelectedMaterialForUsedMaterial] = useState('')
   const [newUsedMaterialQuantity, setNewUsedMaterialQuantity] = useState(1)
+  const [newUsedMaterialPrice, setNewUsedMaterialPrice] = useState<number | ''>('')
+  const [newUsedMaterialDepartment, setNewUsedMaterialDepartment] = useState('')
   const [usedMaterialNotes, setUsedMaterialNotes] = useState('')
   const [usedMaterialSearchQuery, setUsedMaterialSearchQuery] = useState('')
+  // حالات حركات المخزون
+  const [stockTransactions, setStockTransactions] = useState<any[]>([])
+  const [stockTxnSearch, setStockTxnSearch] = useState('')
+  const [stockTxnTypeFilter, setStockTxnTypeFilter] = useState('')
+  const [stockTxnDeptFilter, setStockTxnDeptFilter] = useState('')
+  const [stockTxnProjectFilter, setStockTxnProjectFilter] = useState('all')
+  const [addStockTxnOpen, setAddStockTxnOpen] = useState(false)
+  const [newStockTxn, setNewStockTxn] = useState<{
+    materialId: string; type: string; quantity: number; price: number | '';
+    department: string; date: string; notes: string; reference: string; projectId: string
+  }>({
+    materialId: '', type: 'delivery', quantity: 0, price: '', department: '',
+    date: new Date().toISOString().split('T')[0], notes: '', reference: '', projectId: ''
+  })
+  const [stockTxnMaterialSearch, setStockTxnMaterialSearch] = useState('')
   const [editingUserField, setEditingUserField] = useState<{userId: string, field: 'name' | 'phone'} | null>(null)
   const [editUserValue, setEditUserValue] = useState('')
   // إعادة تعيين كلمة المرور من حساب الصيانة
@@ -531,6 +551,8 @@ export default function Home() {
           projectId: selectedProjectForUsedMaterial,
           materialId: selectedMaterialForUsedMaterial,
           quantity: newUsedMaterialQuantity,
+          price: newUsedMaterialPrice === '' ? undefined : newUsedMaterialPrice,
+          department: newUsedMaterialDepartment || undefined,
           notes: usedMaterialNotes
         })
       })
@@ -539,6 +561,8 @@ export default function Home() {
         setAddUsedMaterialOpen(false)
         setSelectedMaterialForUsedMaterial('')
         setNewUsedMaterialQuantity(1)
+        setNewUsedMaterialPrice('')
+        setNewUsedMaterialDepartment('')
         setUsedMaterialNotes('')
         setUsedMaterialSearchQuery('')
         // فتح القسم تلقائياً ليرى المستخدم النتيجة فوراً
@@ -569,6 +593,98 @@ export default function Home() {
       toast.error(t.msg_error)
     }
   }
+
+  // جلب حركات المخزون
+  const fetchStockTransactions = useCallback(async () => {
+    try {
+      const params = new URLSearchParams()
+      if (stockTxnProjectFilter !== 'all') params.set('projectId', stockTxnProjectFilter)
+      if (stockTxnTypeFilter) params.set('type', stockTxnTypeFilter)
+      if (stockTxnDeptFilter) params.set('department', stockTxnDeptFilter)
+      if (stockTxnSearch) params.set('search', stockTxnSearch)
+      params.set('limit', '500')
+      const res = await fetch(`/api/stock-transactions?${params.toString()}`)
+      if (res.ok) {
+        const data = await res.json()
+        setStockTransactions(data.transactions || [])
+      } else {
+        setStockTransactions([])
+      }
+    } catch (error) {
+      console.error('Error fetching stock transactions:', error)
+      setStockTransactions([])
+    }
+  }, [stockTxnProjectFilter, stockTxnTypeFilter, stockTxnDeptFilter, stockTxnSearch])
+
+  // إضافة حركة مخزون يدوياً
+  const handleAddStockTxn = async () => {
+    if (!newStockTxn.materialId) {
+      toast.error(language === 'ar' ? 'اختر المادة' : 'Select material')
+      return
+    }
+    if (!newStockTxn.quantity || newStockTxn.quantity <= 0) {
+      toast.error(language === 'ar' ? 'أدخل كمية صحيحة' : 'Enter valid quantity')
+      return
+    }
+    try {
+      const res = await fetch('/api/stock-transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          materialId: newStockTxn.materialId,
+          projectId: newStockTxn.projectId || undefined,
+          type: newStockTxn.type,
+          deliveryQty: newStockTxn.quantity,
+          price: newStockTxn.price === '' ? undefined : newStockTxn.price,
+          department: newStockTxn.department || undefined,
+          date: newStockTxn.date,
+          notes: newStockTxn.notes,
+          reference: newStockTxn.reference
+        })
+      })
+      if (res.ok) {
+        toast.success(language === 'ar' ? 'تم تسجيل الحركة' : 'Transaction recorded')
+        setAddStockTxnOpen(false)
+        setNewStockTxn({
+          materialId: '', type: 'delivery', quantity: 0, price: '', department: '',
+          date: new Date().toISOString().split('T')[0], notes: '', reference: '', projectId: ''
+        })
+        setStockTxnMaterialSearch('')
+        fetchStockTransactions()
+        fetchMaterials()
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        toast.error(errData.error || t.msg_error)
+      }
+    } catch (error) {
+      toast.error(t.msg_error)
+    }
+  }
+
+  // حذف حركة مخزون
+  const handleDeleteStockTxn = async (id: string) => {
+    if (!confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذه الحركة؟ سيتم عكس تأثيرها على الرصيد.' : 'Delete this transaction? Stock balance will be reversed.')) return
+    try {
+      const res = await fetch(`/api/stock-transactions?id=${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success(language === 'ar' ? 'تم حذف الحركة' : 'Transaction deleted')
+        fetchStockTransactions()
+        fetchMaterials()
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        toast.error(errData.error || t.msg_error)
+      }
+    } catch (error) {
+      toast.error(t.msg_error)
+    }
+  }
+
+  // تحميل حركات المخزون عند فتح التبويب
+  useEffect(() => {
+    if (activeTab === 'stock') {
+      fetchStockTransactions()
+    }
+  }, [activeTab, fetchStockTransactions])
 
   // تنزيل المواد المستعملة لمشروع محدد إلى Excel
   const handleExportUsedMaterials = async (projectId: string) => {
@@ -1816,6 +1932,7 @@ export default function Home() {
             <TabsTrigger value="projects" className="gap-2"><FolderOpen className="w-4 h-4" /> {language === 'ar' ? 'المشاريع' : 'Projects'}</TabsTrigger>
             <TabsTrigger value="units" className="gap-2"><Boxes className="w-4 h-4" /> {language === 'ar' ? 'الوحدات' : 'Units'}</TabsTrigger>
             <TabsTrigger value="materials" className="gap-2"><Box className="w-4 h-4" /> {t.nav_materials}</TabsTrigger>
+            <TabsTrigger value="stock" className="gap-2"><Layers className="w-4 h-4" /> {language === 'ar' ? 'حركات المخزون' : 'Stock Moves'}</TabsTrigger>
             <TabsTrigger value="items" className="gap-2"><Package className="w-4 h-4" /> {t.nav_items}</TabsTrigger>
             <TabsTrigger value="stages" className="gap-2"><Settings className="w-4 h-4" /> {t.nav_stages}</TabsTrigger>
             <TabsTrigger value="schedule" className="gap-2"><Calendar className="w-4 h-4" /> {t.nav_schedule}</TabsTrigger>
@@ -2075,6 +2192,8 @@ export default function Home() {
                               setSelectedProjectForUsedMaterial(project.id)
                               setSelectedMaterialForUsedMaterial('')
                               setNewUsedMaterialQuantity(1)
+                              setNewUsedMaterialPrice('')
+                              setNewUsedMaterialDepartment('')
                               setUsedMaterialNotes('')
                               setUsedMaterialSearchQuery('')
                               setAddUsedMaterialOpen(true)
@@ -2164,6 +2283,8 @@ export default function Home() {
                               setSelectedProjectForUsedMaterial(project.id)
                               setSelectedMaterialForUsedMaterial('')
                               setNewUsedMaterialQuantity(1)
+                              setNewUsedMaterialPrice('')
+                              setNewUsedMaterialDepartment('')
                               setUsedMaterialNotes('')
                               setUsedMaterialSearchQuery('')
                               setAddUsedMaterialOpen(true)
@@ -2268,6 +2389,8 @@ export default function Home() {
                                             setSelectedProjectForUsedMaterial(project.id)
                                             setSelectedMaterialForUsedMaterial('')
                                             setNewUsedMaterialQuantity(1)
+                                            setNewUsedMaterialPrice('')
+                                            setNewUsedMaterialDepartment('')
                                             setUsedMaterialNotes('')
                                             setUsedMaterialSearchQuery('')
                                             setAddUsedMaterialOpen(true)
@@ -2302,6 +2425,8 @@ export default function Home() {
                                           setSelectedProjectForUsedMaterial(project.id)
                                           setSelectedMaterialForUsedMaterial('')
                                           setNewUsedMaterialQuantity(1)
+                                          setNewUsedMaterialPrice('')
+                                          setNewUsedMaterialDepartment('')
                                           setUsedMaterialNotes('')
                                           setUsedMaterialSearchQuery('')
                                           setAddUsedMaterialOpen(true)
@@ -2636,6 +2761,8 @@ export default function Home() {
                                               setSelectedProjectForUsedMaterial(project.id)
                                               setSelectedMaterialForUsedMaterial('')
                                               setNewUsedMaterialQuantity(1)
+                                              setNewUsedMaterialPrice('')
+                                              setNewUsedMaterialDepartment('')
                                               setUsedMaterialNotes('')
                                               setUsedMaterialSearchQuery('')
                                               setAddUsedMaterialOpen(true)
@@ -2671,6 +2798,8 @@ export default function Home() {
                                             setSelectedProjectForUsedMaterial(project.id)
                                             setSelectedMaterialForUsedMaterial('')
                                             setNewUsedMaterialQuantity(1)
+                                            setNewUsedMaterialPrice('')
+                                            setNewUsedMaterialDepartment('')
                                             setUsedMaterialNotes('')
                                             setUsedMaterialSearchQuery('')
                                             setAddUsedMaterialOpen(true)
@@ -2699,6 +2828,8 @@ export default function Home() {
                               setSelectedProjectForUsedMaterial(project.id)
                               setSelectedMaterialForUsedMaterial('')
                               setNewUsedMaterialQuantity(1)
+                              setNewUsedMaterialPrice('')
+                              setNewUsedMaterialDepartment('')
                               setUsedMaterialNotes('')
                               setUsedMaterialSearchQuery('')
                               setAddUsedMaterialOpen(true)
@@ -3511,6 +3642,309 @@ export default function Home() {
 
           {/* تبويب المواد الأولية */}
           <MaterialsTab projects={projects} language={language} t={t} isRTL={isRTL} currentUser={currentUser} />
+
+          {/* تبويب حركات المخزون - على نمط ملف STOCK DETAILS */}
+          <TabsContent value="stock" className="space-y-4">
+            <div className="flex flex-col gap-3 print:hidden">
+              <div className="flex justify-between items-center flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-bold text-amber-900 flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-amber-600" />
+                    {language === 'ar' ? 'حركات المخزون' : 'Stock Transactions'}
+                    <Badge variant="outline" className="text-amber-700 border-amber-300">{stockTransactions.length}</Badge>
+                  </h2>
+                </div>
+                {(currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'store_keeper') && (
+                  <Dialog open={addStockTxnOpen} onOpenChange={setAddStockTxnOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 h-9">
+                        <Plus className="w-4 h-4" /> {language === 'ar' ? 'تسجيل حركة' : 'Record Transaction'}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader><DialogTitle>{language === 'ar' ? 'تسجيل حركة مخزون' : 'Record Stock Transaction'}</DialogTitle></DialogHeader>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>{language === 'ar' ? 'المادة' : 'Material'} *</Label>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Input value={stockTxnMaterialSearch} onChange={(e) => { setStockTxnMaterialSearch(e.target.value); setNewStockTxn(prev => ({ ...prev, materialId: '' })) }} placeholder={language === 'ar' ? 'ابحث عن المادة بالاسم أو الكود...' : 'Search by name or code...'} className="pl-9" />
+                          </div>
+                          <div className="border rounded-lg max-h-40 overflow-y-auto">
+                            {materials.filter(m => {
+                              if (!stockTxnMaterialSearch.trim()) return true
+                              const q = stockTxnMaterialSearch.trim().toLowerCase()
+                              return m.name.toLowerCase().includes(q) || (m.nameAr || '').toLowerCase().includes(q) || (m.itemCode || '').toLowerCase().includes(q)
+                            }).slice(0, 50).map(m => (
+                              <div key={m.id} onClick={() => { setNewStockTxn(prev => ({ ...prev, materialId: m.id, price: m.unitPrice, department: m.department || '' })); setStockTxnMaterialSearch(`${m.nameAr || m.name} ${m.itemCode ? `[${m.itemCode}]` : ''}`) }}
+                                className={`px-3 py-2 cursor-pointer flex items-center justify-between hover:bg-amber-50 transition-colors ${newStockTxn.materialId === m.id ? 'bg-amber-100 border-r-2 border-amber-500' : ''}`}>
+                                <div className="flex flex-col">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium">{m.name}</span>
+                                    {m.itemCode && <code className="text-[10px] bg-amber-50 text-amber-800 px-1 py-0.5 rounded font-mono">{m.itemCode}</code>}
+                                  </div>
+                                  <span className="text-xs text-gray-500">المخزون: {m.stockQuantity} {m.unit} • {m.unitPrice} ر.ق</span>
+                                </div>
+                                <span className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">{m.unit}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>{language === 'ar' ? 'نوع الحركة' : 'Type'} *</Label>
+                            <Select value={newStockTxn.type} onValueChange={(val) => setNewStockTxn(prev => ({ ...prev, type: val }))}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="delivery">{language === 'ar' ? 'وارد (شراء/استلام)' : 'Delivery (In)'}</SelectItem>
+                                <SelectItem value="opening">{language === 'ar' ? 'رصيد افتتاحي' : 'Opening Balance'}</SelectItem>
+                                <SelectItem value="return">{language === 'ar' ? 'إرجاع' : 'Return'}</SelectItem>
+                                <SelectItem value="adjustment">{language === 'ar' ? 'تسوية (+/-)' : 'Adjustment (+/-)'}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>{language === 'ar' ? 'التاريخ' : 'Date'}</Label>
+                            <Input type="date" value={newStockTxn.date} onChange={(e) => setNewStockTxn(prev => ({ ...prev, date: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label>{language === 'ar' ? 'الكمية' : 'Quantity'} *</Label>
+                            <Input type="number" step="0.01" min="0.01" value={newStockTxn.quantity} onChange={(e) => setNewStockTxn(prev => ({ ...prev, quantity: parseFloat(e.target.value) || 0 }))} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>{language === 'ar' ? 'السعر' : 'Price'}</Label>
+                            <Input type="number" step="0.01" min="0" value={newStockTxn.price} onChange={(e) => setNewStockTxn(prev => ({ ...prev, price: e.target.value === '' ? '' : parseFloat(e.target.value) }))} placeholder="افتراضي" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>{language === 'ar' ? 'القسم' : 'Department'}</Label>
+                            <Select value={newStockTxn.department} onValueChange={(val) => setNewStockTxn(prev => ({ ...prev, department: val }))}>
+                              <SelectTrigger><SelectValue placeholder={language === 'ar' ? 'افتراضي' : 'Default'} /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="CARPENTER">{t.cat_carpenter}</SelectItem>
+                                <SelectItem value="PAINTER">{t.cat_painter}</SelectItem>
+                                <SelectItem value="STEEL FABRICATION">{t.cat_steel}</SelectItem>
+                                <SelectItem value="FOAM AND DESIGN WORK">{t.cat_foam}</SelectItem>
+                                <SelectItem value="TAILOR WORK">{t.cat_tailor}</SelectItem>
+                                <SelectItem value="GENERAL WORK">{t.cat_general}</SelectItem>
+                                <SelectItem value="PARKE">{language === 'ar' ? 'باركيه' : 'Parke'}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{language === 'ar' ? 'المشروع المرتبط (اختياري)' : 'Related Project (optional)'}</Label>
+                          <Select value={newStockTxn.projectId} onValueChange={(val) => setNewStockTxn(prev => ({ ...prev, projectId: val }))}>
+                            <SelectTrigger><SelectValue placeholder={language === 'ar' ? 'بدون مشروع' : 'No project'} /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">{language === 'ar' ? 'بدون مشروع' : 'No project'}</SelectItem>
+                              {projects.map(p => (
+                                <SelectItem key={p.id} value={p.id}>{p.nameAr || p.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>{language === 'ar' ? 'مرجع (فاتورة/إشعار)' : 'Reference'}</Label>
+                            <Input value={newStockTxn.reference} onChange={(e) => setNewStockTxn(prev => ({ ...prev, reference: e.target.value }))} placeholder="INV-001" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>{language === 'ar' ? 'ملاحظات' : 'Notes'}</Label>
+                            <Input value={newStockTxn.notes} onChange={(e) => setNewStockTxn(prev => ({ ...prev, notes: e.target.value }))} />
+                          </div>
+                        </div>
+                        {newStockTxn.materialId && (() => {
+                          const m = materials.find(x => x.id === newStockTxn.materialId)
+                          if (!m) return null
+                          const qty = newStockTxn.quantity || 0
+                          const price = newStockTxn.price === '' ? (m.unitPrice || 0) : newStockTxn.price
+                          const total = qty * price
+                          let signedQty = qty
+                          if (newStockTxn.type === 'delivery' || newStockTxn.type === 'opening' || newStockTxn.type === 'return') signedQty = Math.abs(qty)
+                          const newStock = Math.max(0, (m.stockQuantity || 0) + signedQty)
+                          return (
+                            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-xs space-y-1">
+                              <div className="flex justify-between"><span className="text-gray-600">{language === 'ar' ? 'الإجمالي:' : 'Total:'}</span><span className="font-bold text-amber-700">{total.toFixed(2)} ر.ق</span></div>
+                              <div className="flex justify-between"><span className="text-gray-600">{language === 'ar' ? 'الرصيد بعد الحركة:' : 'Balance after:'}</span><span className="font-bold text-amber-700">{newStock} {m.unit}</span></div>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setAddStockTxnOpen(false)}>{t.btn_cancel}</Button>
+                        <Button onClick={handleAddStockTxn} className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">{t.btn_save}</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
+
+              {/* فلاتر */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input value={stockTxnSearch} onChange={(e) => setStockTxnSearch(e.target.value)} placeholder={language === 'ar' ? 'بحث (كود/وصف/ملاحظات)...' : 'Search (code/desc/notes)...'} className="pl-9" />
+                </div>
+                <Select value={stockTxnTypeFilter} onValueChange={setStockTxnTypeFilter}>
+                  <SelectTrigger className="w-[160px] h-9 text-sm"><SelectValue placeholder={language === 'ar' ? 'كل الأنواع' : 'All Types'} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">{language === 'ar' ? 'كل الأنواع' : 'All Types'}</SelectItem>
+                    <SelectItem value="delivery">{language === 'ar' ? 'وارد' : 'Delivery'}</SelectItem>
+                    <SelectItem value="usage">{language === 'ar' ? 'استخدام' : 'Usage'}</SelectItem>
+                    <SelectItem value="opening">{language === 'ar' ? 'افتتاحي' : 'Opening'}</SelectItem>
+                    <SelectItem value="return">{language === 'ar' ? 'إرجاع' : 'Return'}</SelectItem>
+                    <SelectItem value="adjustment">{language === 'ar' ? 'تسوية' : 'Adjustment'}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={stockTxnDeptFilter} onValueChange={setStockTxnDeptFilter}>
+                  <SelectTrigger className="w-[180px] h-9 text-sm"><SelectValue placeholder={language === 'ar' ? 'كل الأقسام' : 'All Depts'} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">{language === 'ar' ? 'كل الأقسام' : 'All Departments'}</SelectItem>
+                    <SelectItem value="CARPENTER">{t.cat_carpenter}</SelectItem>
+                    <SelectItem value="PAINTER">{t.cat_painter}</SelectItem>
+                    <SelectItem value="STEEL FABRICATION">{t.cat_steel}</SelectItem>
+                    <SelectItem value="FOAM AND DESIGN WORK">{t.cat_foam}</SelectItem>
+                    <SelectItem value="TAILOR WORK">{t.cat_tailor}</SelectItem>
+                    <SelectItem value="GENERAL WORK">{t.cat_general}</SelectItem>
+                    <SelectItem value="PARKE">{language === 'ar' ? 'باركيه' : 'Parke'}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={stockTxnProjectFilter} onValueChange={setStockTxnProjectFilter}>
+                  <SelectTrigger className="w-[200px] h-9 text-sm"><SelectValue placeholder={language === 'ar' ? 'كل المشاريع' : 'All Projects'} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{language === 'ar' ? 'كل المشاريع' : 'All Projects'}</SelectItem>
+                    {projects.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.nameAr || p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={() => fetchStockTransactions()} className="h-9">
+                  {language === 'ar' ? 'تحديث' : 'Refresh'}
+                </Button>
+              </div>
+            </div>
+
+            {/* جدول الحركات - على نمط Sheet1 في ملف STOCK DETAILS */}
+            <Card>
+              <CardContent className="p-0 overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-amber-50">
+                      <TableHead className="w-12">#</TableHead>
+                      <TableHead>{language === 'ar' ? 'التاريخ' : 'Date'}</TableHead>
+                      <TableHead>{language === 'ar' ? 'كود المادة' : 'Item Code'}</TableHead>
+                      <TableHead>{language === 'ar' ? 'وصف المادة' : 'Description'}</TableHead>
+                      <TableHead>{language === 'ar' ? 'الوحدة' : 'UOM'}</TableHead>
+                      <TableHead className="text-right">{language === 'ar' ? 'الكمية (±)' : 'Delivery'}</TableHead>
+                      <TableHead className="text-right">{language === 'ar' ? 'السعر' : 'Price'}</TableHead>
+                      <TableHead className="text-right">{language === 'ar' ? 'الإجمالي' : 'Total'}</TableHead>
+                      <TableHead>{language === 'ar' ? 'القسم' : 'Department'}</TableHead>
+                      <TableHead>{language === 'ar' ? 'النوع' : 'Type'}</TableHead>
+                      <TableHead className="text-right">{language === 'ar' ? 'الرصيد' : 'Balance'}</TableHead>
+                      <TableHead>{language === 'ar' ? 'ملاحظات' : 'Notes'}</TableHead>
+                      {(currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'store_keeper') && (
+                        <TableHead className="print:hidden">{language === 'ar' ? 'إجراءات' : 'Actions'}</TableHead>
+                      )}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {stockTransactions.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={13} className="text-center py-12 text-gray-400">
+                          <Layers className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                          <p className="text-sm">{language === 'ar' ? 'لا توجد حركات مخزون مسجلة بعد' : 'No stock transactions yet'}</p>
+                          <p className="text-xs mt-1">{language === 'ar' ? 'ابدأ بتسجيل حركة وارد أو إضافة مادة مستعملة لمشروع' : 'Start by recording a delivery or adding a used material'}</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : stockTransactions.map((txn, idx) => {
+                      const isOut = (txn.deliveryQty || 0) < 0
+                      const typeLabels: Record<string, { ar: string; en: string; color: string }> = {
+                        delivery: { ar: 'وارد', en: 'Delivery', color: 'bg-green-100 text-green-700' },
+                        usage: { ar: 'استخدام', en: 'Usage', color: 'bg-purple-100 text-purple-700' },
+                        opening: { ar: 'افتتاحي', en: 'Opening', color: 'bg-blue-100 text-blue-700' },
+                        return: { ar: 'إرجاع', en: 'Return', color: 'bg-amber-100 text-amber-700' },
+                        adjustment: { ar: 'تسوية', en: 'Adjustment', color: 'bg-gray-100 text-gray-700' }
+                      }
+                      const typeLabel = typeLabels[txn.type] || typeLabels.delivery
+                      return (
+                        <TableRow key={txn.id} className={isOut ? 'bg-red-50/30' : ''}>
+                          <TableCell className="text-xs text-gray-500">{idx + 1}</TableCell>
+                          <TableCell className="text-xs whitespace-nowrap">
+                            {new Date(txn.date).toLocaleDateString('en-GB')}
+                          </TableCell>
+                          <TableCell>
+                            {txn.itemCode ? (
+                              <code className="text-xs bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded font-mono">{txn.itemCode}</code>
+                            ) : (
+                              <span className="text-gray-300 text-xs">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm font-medium">{txn.description || txn.material?.name || '—'}</div>
+                            {txn.material?.nameAr && txn.material.nameAr !== '-' && (
+                              <div className="text-xs text-gray-500">{txn.material.nameAr}</div>
+                            )}
+                            {txn.project && (
+                              <div className="text-[10px] text-amber-700 mt-0.5">📁 {txn.project.nameAr || txn.project.name}</div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs">{txn.uom || txn.material?.unit || '-'}</TableCell>
+                          <TableCell className={`text-right font-mono font-bold ${isOut ? 'text-red-600' : 'text-green-600'}`}>
+                            {isOut ? '' : '+'}{txn.deliveryQty}
+                          </TableCell>
+                          <TableCell className="text-right text-xs">{(txn.price || 0).toFixed(2)}</TableCell>
+                          <TableCell className="text-right text-xs font-medium">{(txn.totalPrice || 0).toFixed(2)}</TableCell>
+                          <TableCell>
+                            {txn.department ? (
+                              <Badge variant="outline" className="text-[10px]">{txn.department}</Badge>
+                            ) : <span className="text-gray-300 text-xs">—</span>}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`text-[10px] ${typeLabel.color}`}>{language === 'ar' ? typeLabel.ar : typeLabel.en}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-xs font-bold">
+                            {txn.balanceAfter !== null ? txn.balanceAfter : '-'}
+                          </TableCell>
+                          <TableCell className="text-xs text-gray-500 max-w-[200px] truncate" title={txn.notes || ''}>
+                            {txn.notes || txn.reference ? (
+                              <div>
+                                {txn.notes && <div>{txn.notes}</div>}
+                                {txn.reference && <div className="text-[10px] text-amber-700">REF: {txn.reference}</div>}
+                              </div>
+                            ) : <span className="text-gray-300">—</span>}
+                          </TableCell>
+                          {(currentUser?.role === 'general_manager' || currentUser?.role === 'maintenance' || currentUser?.role === 'store_keeper') && (
+                            <TableCell className="print:hidden">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteStockTxn(txn.id)}>
+                                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                  {stockTransactions.length > 0 && (
+                    <tfoot>
+                      <TableRow className="bg-amber-100 font-bold">
+                        <TableCell colSpan={5}>{language === 'ar' ? 'الإجمالي' : 'Total'}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {stockTransactions.reduce((s, t) => s + (t.deliveryQty || 0), 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell colSpan={1}></TableCell>
+                        <TableCell className="text-right font-mono">
+                          {stockTransactions.reduce((s, t) => s + (t.totalPrice || 0), 0).toFixed(2)} ر.ق
+                        </TableCell>
+                        <TableCell colSpan={4}></TableCell>
+                      </TableRow>
+                    </tfoot>
+                  )}
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* تبويب العناصر */}
           <TabsContent value="items" className="space-y-4">
@@ -5620,29 +6054,66 @@ export default function Home() {
                 {materials.filter(m => {
                   if (!usedMaterialSearchQuery.trim()) return true
                   const q = usedMaterialSearchQuery.trim().toLowerCase()
-                  return m.name.toLowerCase().includes(q) || (m.nameAr && m.nameAr.toLowerCase().includes(q))
+                  return m.name.toLowerCase().includes(q) || (m.nameAr && m.nameAr.toLowerCase().includes(q)) || (m.itemCode && m.itemCode.toLowerCase().includes(q))
                 }).map(m => (
-                  <div key={m.id} onClick={() => { setSelectedMaterialForUsedMaterial(m.id); setUsedMaterialSearchQuery(m.nameAr || m.name) }}
+                  <div key={m.id} onClick={() => { setSelectedMaterialForUsedMaterial(m.id); setUsedMaterialSearchQuery(m.nameAr || m.name); setNewUsedMaterialPrice(m.unitPrice || 0); setNewUsedMaterialDepartment(m.department || '') }}
                     className={`px-3 py-2 cursor-pointer flex items-center justify-between hover:bg-purple-50 transition-colors ${selectedMaterialForUsedMaterial === m.id ? 'bg-purple-100 border-r-2 border-purple-500' : ''}`}>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">{m.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{m.name}</span>
+                        {m.itemCode && <code className="text-[10px] bg-amber-50 text-amber-800 px-1 py-0.5 rounded font-mono">{m.itemCode}</code>}
+                      </div>
                       {m.nameAr && m.nameAr !== '-' && <span className="text-xs text-gray-500">{m.nameAr}</span>}
+                      <span className="text-xs text-gray-500">المخزون: {m.stockQuantity} {m.unit} • {m.unitPrice} ر.ق</span>
                     </div>
                     <span className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">{m.unit}</span>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>{language === 'ar' ? 'الكمية' : 'Quantity'}</Label>
-                <Input type="number" min="1" value={newUsedMaterialQuantity} onChange={(e) => setNewUsedMaterialQuantity(parseInt(e.target.value) || 1)} />
+                <Input type="number" step="0.01" min="0.01" value={newUsedMaterialQuantity} onChange={(e) => setNewUsedMaterialQuantity(parseFloat(e.target.value) || 0)} />
               </div>
               <div className="space-y-2">
-                <Label>{language === 'ar' ? 'ملاحظات' : 'Notes'}</Label>
-                <Input value={usedMaterialNotes} onChange={(e) => setUsedMaterialNotes(e.target.value)} placeholder={language === 'ar' ? 'ملاحظات اختيارية' : 'Optional notes'} />
+                <Label>{language === 'ar' ? 'السعر' : 'Price'}</Label>
+                <Input type="number" step="0.01" min="0" value={newUsedMaterialPrice} onChange={(e) => setNewUsedMaterialPrice(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="افتراضي" />
+              </div>
+              <div className="space-y-2">
+                <Label>{language === 'ar' ? 'القسم' : 'Department'}</Label>
+                <Select value={newUsedMaterialDepartment} onValueChange={setNewUsedMaterialDepartment}>
+                  <SelectTrigger><SelectValue placeholder={language === 'ar' ? 'افتراضي' : 'Default'} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CARPENTER">{t.cat_carpenter}</SelectItem>
+                    <SelectItem value="PAINTER">{t.cat_painter}</SelectItem>
+                    <SelectItem value="STEEL FABRICATION">{t.cat_steel}</SelectItem>
+                    <SelectItem value="FOAM AND DESIGN WORK">{t.cat_foam}</SelectItem>
+                    <SelectItem value="TAILOR WORK">{t.cat_tailor}</SelectItem>
+                    <SelectItem value="GENERAL WORK">{t.cat_general}</SelectItem>
+                    <SelectItem value="PARKE">{language === 'ar' ? 'باركيه' : 'Parke'}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>{language === 'ar' ? 'ملاحظات' : 'Notes'}</Label>
+              <Input value={usedMaterialNotes} onChange={(e) => setUsedMaterialNotes(e.target.value)} placeholder={language === 'ar' ? 'ملاحظات اختيارية' : 'Optional notes'} />
+            </div>
+            {selectedMaterialForUsedMaterial && (() => {
+              const m = materials.find(x => x.id === selectedMaterialForUsedMaterial)
+              if (!m) return null
+              const qty = newUsedMaterialQuantity || 0
+              const price = newUsedMaterialPrice === '' ? (m.unitPrice || 0) : newUsedMaterialPrice
+              const total = qty * price
+              const newStock = Math.max(0, (m.stockQuantity || 0) - qty)
+              return (
+                <div className="bg-purple-50 border border-purple-200 rounded-md p-3 text-xs space-y-1">
+                  <div className="flex justify-between"><span className="text-gray-600">{language === 'ar' ? 'الإجمالي:' : 'Total:'}</span><span className="font-bold text-purple-700">{total.toFixed(2)} ر.ق</span></div>
+                  <div className="flex justify-between"><span className="text-gray-600">{language === 'ar' ? 'الرصيد بعد الاستخدام:' : 'Stock after:'}</span><span className={`font-bold ${newStock < (m.minStockLevel || 0) ? 'text-red-600' : 'text-green-700'}`}>{newStock} {m.unit}</span></div>
+                </div>
+              )
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setAddUsedMaterialOpen(false); setUsedMaterialSearchQuery('') }}>{t.btn_cancel}</Button>

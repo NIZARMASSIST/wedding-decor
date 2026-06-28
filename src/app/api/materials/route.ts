@@ -44,15 +44,19 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type')
     const projectId = searchParams.get('projectId')
     const search = searchParams.get('search')
+    const department = searchParams.get('department')
     const usedMaterials = searchParams.get('usedMaterials') // جلب المواد المستعملة
 
     const where: any = {}
     if (category) where.category = category
     if (type) where.type = type
+    if (department) where.department = department
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
-        { nameAr: { contains: search, mode: 'insensitive' } }
+        { nameAr: { contains: search, mode: 'insensitive' } },
+        { itemCode: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
       ]
     }
 
@@ -64,7 +68,7 @@ export async function GET(request: NextRequest) {
           select: { id: true, quantity: true, notes: true }
         } : false
       },
-      orderBy: { category: 'asc' }
+      orderBy: [{ category: 'asc' }, { name: 'asc' }]
     })
 
     // إذا طلب مشروع معين، نرجع المواد المطلوبة والمستعملة
@@ -117,50 +121,82 @@ export async function POST(request: NextRequest) {
 
       for (const mat of body.materials) {
         try {
-          if (!mat.name) {
+          if (!mat.name && !mat.itemCode) {
             results.errors++
             continue
           }
 
-          const existing = await db.material.findFirst({
-            where: { name: mat.name }
-          })
+          // البحث بواسطة itemCode أولاً، ثم name
+          let existing: any = null
+          if (mat.itemCode) {
+            existing = await db.material.findUnique({ where: { itemCode: mat.itemCode } })
+          }
+          if (!existing && mat.name) {
+            existing = await db.material.findFirst({ where: { name: mat.name } })
+          }
 
           if (existing) {
             await db.material.update({
               where: { id: existing.id },
               data: {
+                name: mat.name || existing.name,
                 nameAr: mat.nameAr || existing.nameAr,
+                itemCode: mat.itemCode || existing.itemCode,
                 unit: mat.unit || existing.unit,
                 unitAr: mat.unitAr || existing.unitAr,
                 category: mat.category || existing.category,
                 categoryAr: mat.categoryAr || existing.categoryAr,
+                department: mat.department || existing.department,
                 unitPrice: mat.unitPrice !== undefined ? mat.unitPrice : existing.unitPrice,
                 stockQuantity: mat.stockQuantity !== undefined ? mat.stockQuantity : existing.stockQuantity,
+                minStockLevel: mat.minStockLevel !== undefined ? mat.minStockLevel : existing.minStockLevel,
                 type: mat.type || existing.type,
                 description: mat.description || existing.description,
               }
             })
             results.updated++
           } else {
-            await db.material.create({
+            const created = await db.material.create({
               data: {
-                name: mat.name,
+                name: mat.name || mat.itemCode,
                 nameAr: mat.nameAr || '-',
+                itemCode: mat.itemCode || null,
                 unit: mat.unit || 'PCS',
                 unitAr: mat.unitAr || '-',
                 category: mat.category || 'GENERAL WORK',
                 categoryAr: mat.categoryAr || '-',
+                department: mat.department || null,
                 unitPrice: mat.unitPrice || 0,
                 stockQuantity: mat.stockQuantity || 0,
+                minStockLevel: mat.minStockLevel || null,
                 status: 'active',
                 type: mat.type || 'raw',
                 description: mat.description || '',
               }
             })
+            // إنشاء حركة افتتاحية للرصيد الأولي
+            if (mat.stockQuantity && mat.stockQuantity > 0) {
+              await db.stockTransaction.create({
+                data: {
+                  materialId: created.id,
+                  itemCode: created.itemCode,
+                  description: created.name,
+                  uom: created.unit,
+                  deliveryQty: mat.stockQuantity,
+                  price: mat.unitPrice || 0,
+                  totalPrice: (mat.stockQuantity) * (mat.unitPrice || 0),
+                  department: created.department,
+                  balanceAfter: mat.stockQuantity,
+                  type: 'opening',
+                  notes: 'رصيد افتتاحي من الاستيراد',
+                  createdById: session.userId
+                }
+              })
+            }
             results.created++
           }
-        } catch {
+        } catch (err) {
+          console.error('Import error for material:', err)
           results.errors++
         }
       }
@@ -169,27 +205,58 @@ export async function POST(request: NextRequest) {
     }
 
     // إنشاء مادة واحدة
-    const { name, nameAr, unit, unitAr, category, categoryAr, unitPrice, stockQuantity, status, description, type } = body
+    const { name, nameAr, itemCode, unit, unitAr, category, categoryAr, department, unitPrice, stockQuantity, minStockLevel, status, description, type } = body
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Material name is required' }, { status: 400 })
+    }
+
+    // التحقق من فرادة itemCode
+    if (itemCode && itemCode.trim()) {
+      const existing = await db.material.findUnique({ where: { itemCode: itemCode.trim() } })
+      if (existing) {
+        return NextResponse.json({ error: 'كود المادة موجود مسبقاً' }, { status: 400 })
+      }
     }
 
     const material = await db.material.create({
       data: {
         name: name.trim(),
         nameAr: nameAr || '-',
+        itemCode: itemCode?.trim() || null,
         unit: unit || 'PCS',
         unitAr: unitAr || '-',
         category: category || 'GENERAL WORK',
         categoryAr: categoryAr || '-',
+        department: department || null,
         unitPrice: unitPrice || 0,
         stockQuantity: stockQuantity || 0,
+        minStockLevel: minStockLevel || null,
         status: status || 'active',
         type: type || 'raw',
         description: description || '',
       }
     })
+
+    // إنشاء حركة افتتاحية إذا كان هناك رصيد أولي
+    if (stockQuantity && stockQuantity > 0) {
+      await db.stockTransaction.create({
+        data: {
+          materialId: material.id,
+          itemCode: material.itemCode,
+          description: material.name,
+          uom: material.unit,
+          deliveryQty: stockQuantity,
+          price: unitPrice || 0,
+          totalPrice: stockQuantity * (unitPrice || 0),
+          department: material.department,
+          balanceAfter: stockQuantity,
+          type: 'opening',
+          notes: 'رصيد افتتاحي',
+          createdById: session.userId
+        }
+      })
+    }
 
     return NextResponse.json(material)
   } catch (error) {
@@ -214,54 +281,132 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: 'فقط الستور كيبر أو المسؤول التنفيذي يمكنه إضافة المواد المستعملة' }, { status: 403 })
       }
 
-      const { projectId, materialId, quantity, notes } = body
+      const { projectId, materialId, quantity, price, department, notes } = body
       if (!projectId || !materialId) {
         return NextResponse.json({ error: 'معرف المشروع والمادة مطلوبان' }, { status: 400 })
       }
+
+      // جلب المادة لمعرفة السعر والقسم الافتراضي
+      const material = await db.material.findUnique({ where: { id: materialId } })
+      if (!material) {
+        return NextResponse.json({ error: 'المادة غير موجودة' }, { status: 404 })
+      }
+
+      const usedQty = parseFloat(quantity) || 0
+      const usedPrice = price !== undefined ? parseFloat(price) : material.unitPrice
+      const usedDept = department || material.department
 
       // التحقق من وجود المادة المستعملة مسبقاً
       const existing = await db.usedMaterial.findFirst({
         where: { projectId, materialId }
       })
 
+      let usedMaterial: any
+      let oldQty = 0
+
       if (existing) {
-        // تحديث الكمية
-        const updated = await db.usedMaterial.update({
+        oldQty = existing.quantity
+        const newQty = usedQty // استبدال الكمية
+        const deltaQty = newQty - oldQty
+
+        // تحديث الكمية في UsedMaterial
+        usedMaterial = await db.usedMaterial.update({
           where: { id: existing.id },
           data: { 
-            quantity: quantity !== undefined ? quantity : existing.quantity, 
+            quantity: newQty, 
+            price: usedPrice,
+            department: usedDept,
             notes: notes || existing.notes,
             addedById: session.userId,
           },
           include: { material: true, addedBy: { select: { id: true, name: true } } }
         })
-        // إشعار لمنشئ المشروع إذا كان المعدّل مسؤول تنفيذي وليس هو المنشئ
-        if (session.role === 'executive_manager') {
-          const project = await db.project.findUnique({ where: { id: projectId }, select: { createdById: true } })
-          const user = await db.user.findUnique({ where: { id: session.userId }, select: { name: true } })
-          if (project && project.createdById !== session.userId) {
-            await notifyProjectOwner(projectId, user?.name || 'مسؤول تنفيذي', 'executive_manager', 'إضافة/تعديل', 'مادة مستعملة')
+
+        // تعديل الرصيد في Material بالفرق
+        if (deltaQty !== 0) {
+          const newStock = Math.max(0, (material.stockQuantity || 0) - deltaQty)
+          await db.material.update({
+            where: { id: materialId },
+            data: { stockQuantity: newStock }
+          })
+
+          // إنشاء/تعديل حركة المخزون - نحذف القديمة وننشئ جديدة
+          if (existing.transactionId) {
+            await db.stockTransaction.delete({ where: { id: existing.transactionId } }).catch(() => {})
           }
+          const txn = await db.stockTransaction.create({
+            data: {
+              materialId,
+              projectId,
+              itemCode: material.itemCode,
+              description: material.name,
+              uom: material.unit,
+              deliveryQty: -newQty, // سلبة لأنه استهلاك
+              price: usedPrice,
+              totalPrice: newQty * usedPrice,
+              department: usedDept,
+              balanceAfter: newStock,
+              type: 'usage',
+              notes: notes || `استخدام في مشروع`,
+              createdById: session.userId
+            }
+          })
+          // ربط الحركة بالـ UsedMaterial
+          await db.usedMaterial.update({
+            where: { id: usedMaterial.id },
+            data: { transactionId: txn.id }
+          })
         }
-        return NextResponse.json(updated)
+      } else {
+        // إنشاء جديد
+        const newStock = Math.max(0, (material.stockQuantity || 0) - usedQty)
+        
+        // إنشاء حركة المخزون أولاً
+        const txn = await db.stockTransaction.create({
+          data: {
+            materialId,
+            projectId,
+            itemCode: material.itemCode,
+            description: material.name,
+            uom: material.unit,
+            deliveryQty: -usedQty,
+            price: usedPrice,
+            totalPrice: usedQty * usedPrice,
+            department: usedDept,
+            balanceAfter: newStock,
+            type: 'usage',
+            notes: notes || `استخدام في مشروع`,
+            createdById: session.userId
+          }
+        })
+
+        // تحديث رصيد المادة
+        await db.material.update({
+          where: { id: materialId },
+          data: { stockQuantity: newStock }
+        })
+
+        usedMaterial = await db.usedMaterial.create({
+          data: { 
+            projectId, 
+            materialId, 
+            quantity: usedQty, 
+            price: usedPrice,
+            department: usedDept,
+            notes,
+            transactionId: txn.id,
+            addedById: session.userId,
+          },
+          include: { material: true, addedBy: { select: { id: true, name: true } } }
+        })
       }
 
-      const usedMaterial = await db.usedMaterial.create({
-        data: { 
-          projectId, 
-          materialId, 
-          quantity: quantity || 0, 
-          notes,
-          addedById: session.userId,
-        },
-        include: { material: true, addedBy: { select: { id: true, name: true } } }
-      })
       // إشعار لمنشئ المشروع إذا كان المعدّل مسؤول تنفيذي وليس هو المنشئ
       if (session.role === 'executive_manager') {
         const project = await db.project.findUnique({ where: { id: projectId }, select: { createdById: true } })
         const user = await db.user.findUnique({ where: { id: session.userId }, select: { name: true } })
         if (project && project.createdById !== session.userId) {
-          await notifyProjectOwner(projectId, user?.name || 'مسؤول تنفيذي', 'executive_manager', 'إضافة', 'مادة مستعملة')
+          await notifyProjectOwner(projectId, user?.name || 'مسؤول تنفيذي', 'executive_manager', 'إضافة/تعديل', 'مادة مستعملة')
         }
       }
       return NextResponse.json(usedMaterial)
@@ -277,8 +422,47 @@ export async function PUT(request: NextRequest) {
       if (!id) {
         return NextResponse.json({ error: 'معرف المادة المستعملة مطلوب' }, { status: 400 })
       }
-      // جلب معلومات المادة قبل حذفها لإرسال الإشعار
-      const usedMat = await db.usedMaterial.findUnique({ where: { id }, select: { projectId: true } })
+      // جلب معلومات المادة قبل حذفها لإرسال الإشعار وإرجاع الكمية للمخزون
+      const usedMat = await db.usedMaterial.findUnique({ 
+        where: { id }, 
+        select: { projectId: true, materialId: true, quantity: true, transactionId: true }
+      })
+      
+      if (usedMat) {
+        // إرجاع الكمية للمخزون
+        if (usedMat.materialId) {
+          const material = await db.material.findUnique({ where: { id: usedMat.materialId } })
+          if (material) {
+            const newStock = (material.stockQuantity || 0) + (usedMat.quantity || 0)
+            await db.material.update({
+              where: { id: usedMat.materialId },
+              data: { stockQuantity: newStock }
+            })
+            // إنشاء حركة إرجاع
+            await db.stockTransaction.create({
+              data: {
+                materialId: usedMat.materialId,
+                projectId: usedMat.projectId,
+                itemCode: material.itemCode,
+                description: material.name,
+                uom: material.unit,
+                deliveryQty: usedMat.quantity || 0, // موجبة = إرجاع
+                price: material.unitPrice,
+                totalPrice: (usedMat.quantity || 0) * material.unitPrice,
+                department: material.department,
+                balanceAfter: newStock,
+                type: 'return',
+                notes: 'إرجاع بعد حذف مادة مستعملة',
+                createdById: session.userId
+              }
+            })
+          }
+        }
+        // حذف حركة المخزون المرتبطة
+        if (usedMat.transactionId) {
+          await db.stockTransaction.delete({ where: { id: usedMat.transactionId } }).catch(() => {})
+        }
+      }
       await db.usedMaterial.delete({ where: { id } })
       // إشعار لمنشئ المشروع إذا كان المعدّل مسؤول تنفيذي وليس هو المنشئ
       if (session.role === 'executive_manager' && usedMat) {
@@ -364,7 +548,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // === تحديث مادة (المدير العام + الستور كيبر فقط) ===
-    const { id, name, nameAr, unit, unitAr, category, categoryAr, unitPrice, stockQuantity, status, description, type } = body
+    const { id, name, nameAr, itemCode, unit, unitAr, category, categoryAr, department, unitPrice, stockQuantity, minStockLevel, status, description, type } = body
 
     if (!id) {
       return NextResponse.json({ error: 'Material ID is required' }, { status: 400 })
@@ -375,22 +559,68 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'ليس لديك صلاحية تحديث المواد' }, { status: 403 })
     }
 
+    // التحقق من فرادة itemCode
+    if (itemCode && itemCode.trim()) {
+      const existing = await db.material.findFirst({ 
+        where: { 
+          itemCode: itemCode.trim(),
+          NOT: { id }
+        } 
+      })
+      if (existing) {
+        return NextResponse.json({ error: 'كود المادة موجود مسبقاً' }, { status: 400 })
+      }
+    }
+
+    // جلب الرصيد الحالي قبل التحديث
+    const currentMat = await db.material.findUnique({ where: { id } })
+    if (!currentMat) {
+      return NextResponse.json({ error: 'المادة غير موجودة' }, { status: 404 })
+    }
+
+    const oldStock = currentMat.stockQuantity || 0
+    const newStock = stockQuantity !== undefined ? parseFloat(stockQuantity) : oldStock
+    const stockDelta = newStock - oldStock
+
     const material = await db.material.update({
       where: { id },
       data: {
         name,
         nameAr,
+        itemCode: itemCode === '' ? null : itemCode,
         unit,
         unitAr,
         category,
         categoryAr,
-        unitPrice,
-        stockQuantity,
+        department: department === '' ? null : department,
+        unitPrice: unitPrice !== undefined ? parseFloat(unitPrice) : undefined,
+        stockQuantity: newStock,
+        minStockLevel: minStockLevel !== undefined ? (minStockLevel === '' || minStockLevel === null ? null : parseFloat(minStockLevel)) : undefined,
         status,
         description,
         type,
       }
     })
+
+    // إنشاء حركة تسوية إذا تغير الرصيد يدوياً
+    if (stockDelta !== 0 && stockQuantity !== undefined) {
+      await db.stockTransaction.create({
+        data: {
+          materialId: id,
+          itemCode: material.itemCode,
+          description: material.name,
+          uom: material.unit,
+          deliveryQty: stockDelta, // موجبة أو سالبة حسب التغيير
+          price: material.unitPrice,
+          totalPrice: Math.abs(stockDelta) * material.unitPrice,
+          department: material.department,
+          balanceAfter: newStock,
+          type: 'adjustment',
+          notes: `تسوية يدوية للرصيد من ${oldStock} إلى ${newStock}`,
+          createdById: session.userId
+        }
+      })
+    }
 
     return NextResponse.json(material)
   } catch (error) {
@@ -423,6 +653,10 @@ export async function DELETE(request: NextRequest) {
       where: { materialId: id }
     })
     await db.usedMaterial.deleteMany({
+      where: { materialId: id }
+    })
+    // حذف حركات المخزون المرتبطة (أو فك الارتباط)
+    await db.stockTransaction.deleteMany({
       where: { materialId: id }
     })
 
