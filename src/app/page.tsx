@@ -349,8 +349,8 @@ export default function Home() {
   // حالات حركات المخزون
   const [stockTransactions, setStockTransactions] = useState<any[]>([])
   const [stockTxnSearch, setStockTxnSearch] = useState('')
-  const [stockTxnTypeFilter, setStockTxnTypeFilter] = useState('')
-  const [stockTxnDeptFilter, setStockTxnDeptFilter] = useState('')
+  const [stockTxnTypeFilter, setStockTxnTypeFilter] = useState('__all__')
+  const [stockTxnDeptFilter, setStockTxnDeptFilter] = useState('__all__')
   const [stockTxnProjectFilter, setStockTxnProjectFilter] = useState('all')
   const [addStockTxnOpen, setAddStockTxnOpen] = useState(false)
   const [newStockTxn, setNewStockTxn] = useState<{
@@ -599,8 +599,8 @@ export default function Home() {
     try {
       const params = new URLSearchParams()
       if (stockTxnProjectFilter !== 'all') params.set('projectId', stockTxnProjectFilter)
-      if (stockTxnTypeFilter) params.set('type', stockTxnTypeFilter)
-      if (stockTxnDeptFilter) params.set('department', stockTxnDeptFilter)
+      if (stockTxnTypeFilter && stockTxnTypeFilter !== '__all__') params.set('type', stockTxnTypeFilter)
+      if (stockTxnDeptFilter && stockTxnDeptFilter !== '__all__') params.set('department', stockTxnDeptFilter)
       if (stockTxnSearch) params.set('search', stockTxnSearch)
       params.set('limit', '500')
       const res = await fetch(`/api/stock-transactions?${params.toString()}`)
@@ -3735,10 +3735,10 @@ export default function Home() {
                         </div>
                         <div className="space-y-2">
                           <Label>{language === 'ar' ? 'المشروع المرتبط (اختياري)' : 'Related Project (optional)'}</Label>
-                          <Select value={newStockTxn.projectId} onValueChange={(val) => setNewStockTxn(prev => ({ ...prev, projectId: val }))}>
+                          <Select value={newStockTxn.projectId || '__none__'} onValueChange={(val) => setNewStockTxn(prev => ({ ...prev, projectId: val === '__none__' ? '' : val }))}>
                             <SelectTrigger><SelectValue placeholder={language === 'ar' ? 'بدون مشروع' : 'No project'} /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">{language === 'ar' ? 'بدون مشروع' : 'No project'}</SelectItem>
+                              <SelectItem value="__none__">{language === 'ar' ? 'بدون مشروع' : 'No project'}</SelectItem>
                               {projects.map(p => (
                                 <SelectItem key={p.id} value={p.id}>{p.nameAr || p.name}</SelectItem>
                               ))}
@@ -3790,7 +3790,7 @@ export default function Home() {
                 <Select value={stockTxnTypeFilter} onValueChange={setStockTxnTypeFilter}>
                   <SelectTrigger className="w-[160px] h-9 text-sm"><SelectValue placeholder={language === 'ar' ? 'كل الأنواع' : 'All Types'} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">{language === 'ar' ? 'كل الأنواع' : 'All Types'}</SelectItem>
+                    <SelectItem value="__all__">{language === 'ar' ? 'كل الأنواع' : 'All Types'}</SelectItem>
                     <SelectItem value="delivery">{language === 'ar' ? 'وارد' : 'Delivery'}</SelectItem>
                     <SelectItem value="usage">{language === 'ar' ? 'استخدام' : 'Usage'}</SelectItem>
                     <SelectItem value="opening">{language === 'ar' ? 'افتتاحي' : 'Opening'}</SelectItem>
@@ -3801,7 +3801,7 @@ export default function Home() {
                 <Select value={stockTxnDeptFilter} onValueChange={setStockTxnDeptFilter}>
                   <SelectTrigger className="w-[180px] h-9 text-sm"><SelectValue placeholder={language === 'ar' ? 'كل الأقسام' : 'All Depts'} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">{language === 'ar' ? 'كل الأقسام' : 'All Departments'}</SelectItem>
+                    <SelectItem value="__all__">{language === 'ar' ? 'كل الأقسام' : 'All Departments'}</SelectItem>
                     <SelectItem value="CARPENTER">{t.cat_carpenter}</SelectItem>
                     <SelectItem value="PAINTER">{t.cat_painter}</SelectItem>
                     <SelectItem value="STEEL FABRICATION">{t.cat_steel}</SelectItem>
